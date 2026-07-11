@@ -114,7 +114,7 @@
 
 <script>
 /* ====== ตั้งค่าตรงนี้ ====== */
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxS1aPJlkOm7uHl02oI8Wu6gb_hLOVrnioXhyrCf5MoP0c7FqoHxdplX0vn4BbfVht8/exec"; // URL จาก Apps Script deployment
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbycOCyUlwW8fxaqpBPurIkdFkEez8Hdi5zFv1LPSLfEPRWig_oREW01TDeks7oR1Ms7/exec"; // URL จาก Apps Script deployment
 const GOOGLE_CLIENT_ID = "146280162769-546li5pjl9cpb53cruqpjuvu0i42i2pu.apps.googleusercontent.com";            // จาก Google Cloud Console
 const POLL_MS = 30000;
 /* =========================== */
@@ -182,16 +182,17 @@ async function fetchData(){
     const res = await fetch(SCRIPT_URL + "?id_token=" + encodeURIComponent(idToken));
     const data = await res.json();
     if(data.status !== "ok"){
-      showLoginError(data.message || "เกิดข้อผิดพลาด กรุณา login ใหม่");
+      document.getElementById('cardsEl').innerHTML =
+        '<div class="empty">Error: ' + (data.message || 'unknown error') + '</div>';
       return;
     }
     document.getElementById("userEmail").textContent = data.email;
     render(data);
   }catch(err){
-    console.error(err);
+    document.getElementById('cardsEl').innerHTML =
+      '<div class="empty">เชื่อมต่อ Apps Script ไม่ได้: ' + err.message + '</div>';
   }
 }
-
 function render(data){
   const accounts = data.accounts || [];
   const history = data.history || {};
