@@ -90,11 +90,44 @@
 </div>
 
 <header id="headerEl">
-  <div class="header-row">
-    <div class="brand">
-      <div class="mark">PORTFOLIO<span class="dot">·</span>MONITOR</div>
-      <div class="sub">Multi-Account EA Dashboard</div>
+ <!-- ส่วนแสดงแบรนด์และภาพ -->
+<div class="brand-container">
+    <div class="brand-card">
+        <img src="https://img1.pic.in.th/images/178601.jpg" alt="PIP_NOMINATOR_QUEEN_TH" class="brand-image">
+        <div class="brand-name">PIP_NOMINATOR_QUEEN_TH</div>
     </div>
+</div>
+
+<style>
+    .brand-container {
+        padding: 20px 28px 0px 28px;
+    }
+    .brand-card {
+        background: var(--panel);
+        border: 1px solid var(--gold-dim);
+        padding: 15px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    }
+    .brand-image {
+        width: 60px;
+        height: 60px;
+        object-fit: cover;
+        border-radius: 50%;
+        border: 2px solid var(--gold);
+    }
+    .brand-name {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        color: var(--gold);
+        text-transform: uppercase;
+    }
+</style>
     <div class="user-box">
       <span class="email" id="userEmail"></span>
       <button class="signout" id="signOutBtn">Sign out</button>
@@ -110,7 +143,7 @@
   <div class="cards" id="cardsEl"><div class="empty">กำลังโหลดข้อมูล…</div></div>
 </main>
 
-<footer id="footerEl">อัปเดตอัตโนมัติทุก 30 วินาที · ข้อมูลจาก Google Sheet · ถ้าค้างไว้นานเกิน 1 ชม. รีเฟรชหน้าเพื่อ login ใหม่</footer>
+<footer id="footerEl">อัปเดตอัตโนมัติทุก 30 วินาที · ถ้าค้างไว้นานเกิน 1 ชม. รีเฟรชหน้าเพื่อ login ใหม่</footer>
 
 
 <!-- คัดลอกเฉพาะ script ด้านล่างนี้ไปแทนที่ของเดิมใน index.html -->
