@@ -112,17 +112,13 @@
 
 <footer id="footerEl">อัปเดตอัตโนมัติทุก 30 วินาที · ข้อมูลจาก Google Sheet · ถ้าค้างไว้นานเกิน 1 ชม. รีเฟรชหน้าเพื่อ login ใหม่</footer>
 
+<!-- คัดลอกเฉพาะ script ด้านล่างนี้ไปแทนที่ของเดิมใน index.html -->
 <script>
-/* ====== ตั้งค่าตรงนี้ ====== */
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby6AZEcHLvwMNugp_1GMWuOvhJUftDZJ9u8bsIZTX_oqQZVgthoCN9cX7gz-tpAIMDL/exec"; // URL จาก Apps Script deployment
-const GOOGLE_CLIENT_ID = "146280162769-546li5pjl9cpb53cruqpjuvu0i42i2pu.apps.googleusercontent.com";            // จาก Google Cloud Console
-const POLL_MS = 30000;
-/* =========================== */
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzi5pwN7x4oHek4cAPbIW_rEqJSHxFMG5P8vJ3WnDwjEZvfeAmlJ6p-GIqGND1zPOfC/exec"; 
+const GOOGLE_CLIENT_ID = "146280162769-546li5pjl9cpb53cruqpjuvu0i42i2pu.apps.googleusercontent.com";
 
-let idToken = null;F
+let idToken = null;
 let pollTimer = null;
-let expandedAccount = null;
-let charts = {};
 
 window.onload = () => {
   google.accounts.id.initialize({
@@ -136,19 +132,8 @@ function handleCredentialResponse(response){
   idToken = response.credential;
   showDashboard();
   fetchData();
-  pollTimer = setInterval(fetchData, POLL_MS);
+  pollTimer = setInterval(fetchData, 30000);
 }
-
-document.getElementById("signOutBtn").addEventListener("click", () => {
-  idToken = null;
-  clearInterval(pollTimer);
-  google.accounts.id.disableAutoSelect();
-  document.getElementById("loginScreen").style.display = "flex";
-  document.getElementById("headerEl").style.display = "none";
-  document.getElementById("mainEl").style.display = "none";
-  document.getElementById("footerEl").style.display = "none";
-  document.getElementById("aggStrip").innerHTML = "";
-});
 
 function showDashboard(){
   document.getElementById("loginScreen").style.display = "none";
@@ -157,48 +142,20 @@ function showDashboard(){
   document.getElementById("footerEl").style.display = "block";
 }
 
-function showLoginError(msg){
-  const el = document.getElementById("loginError");
-  el.textContent = msg;
-  el.style.display = "block";
-}
-
-function fmtMoney(n){ return (Number(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
-function fmtSigned(n){ const v=Number(n)||0; return (v>=0?'+':'')+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
-function timeAgo(dateStr){
-  if(!dateStr) return "";
-  const d = new Date(dateStr);
-  if(isNaN(d.getTime())) return "";
-  const diff = Math.floor((Date.now()-d.getTime())/1000);
-  if(diff<60) return diff+'s ago';
-  if(diff<3600) return Math.floor(diff/60)+'m ago';
-  if(diff<86400) return Math.floor(diff/3600)+'h ago';
-  return d.toLocaleDateString();
-}
-
 async function fetchData(){
   if(!idToken) return;
-  try{
+  try {
     const res = await fetch(SCRIPT_URL + "?id_token=" + encodeURIComponent(idToken));
     const data = await res.json();
-    if(data.status !== "ok"){
-      document.getElementById('cardsEl').innerHTML =
-        '<div class="empty">Error: ' + (data.message || 'unknown error') + '</div>';
-      return;
-    }
+    if(data.status !== "ok") throw new Error(data.message);
     document.getElementById("userEmail").textContent = data.email;
-    render(data);
-  }catch(err){
-    document.getElementById('cardsEl').innerHTML =
-      '<div class="empty">เชื่อมต่อ Apps Script ไม่ได้: ' + err.message + '</div>';
+    renderCards(data.accounts);
+  } catch(err) {
+    console.error(err);
+    document.getElementById('cardsEl').innerHTML = '<div class="empty">Error: ' + err.message + '</div>';
   }
 }
-function render(data){
-  const accounts = data.accounts || [];
-  const history = data.history || {};
-  renderAggregate(accounts);
-  renderCards(accounts, history);
-}
+// ... ส่วนของฟังก์ชัน renderCards และฟังก์ชันอื่นๆ ของคุณให้คงไว้เหมือนเดิม ...
 
 function renderAggregate(accounts){
   const totalBalance = accounts.reduce((s,a)=>s+Number(a.balance||0),0);
