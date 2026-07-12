@@ -115,7 +115,7 @@
 
 <!-- คัดลอกเฉพาะ script ด้านล่างนี้ไปแทนที่ของเดิมใน index.html -->
 <script>
-  /* ====== เพิ่มบรรทัดนี้เข้าไปในส่วนต้นของ script ====== */
+/* ====== ตั้งค่าเริ่มต้น ====== */
 let expandedAccount = null;
 let charts = {};
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzi5pwN7x4oHek4cAPbIW_rEqJSHxFMG5P8vJ3WnDwjEZvfeAmlJ6p-GIqGND1zPOfC/exec"; 
@@ -146,6 +146,20 @@ function showDashboard(){
   document.getElementById("footerEl").style.display = "block";
 }
 
+/* ====== ฟังก์ชัน Helper ====== */
+function fmtMoney(n){ return (Number(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtSigned(n){ const v=Number(n)||0; return (v>=0?'+':'')+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function timeAgo(dateStr){
+  if(!dateStr) return "";
+  const d = new Date(dateStr);
+  if(isNaN(d.getTime())) return "";
+  const diff = Math.floor((Date.now()-d.getTime())/1000);
+  if(diff<60) return diff+'s ago';
+  if(diff<3600) return Math.floor(diff/60)+'m ago';
+  if(diff<86400) return Math.floor(diff/3600)+'h ago';
+  return d.toLocaleDateString();
+}
+
 async function fetchData(){
   if(!idToken) return;
   try {
@@ -153,15 +167,15 @@ async function fetchData(){
     const data = await res.json();
     if(data.status !== "ok") throw new Error(data.message);
     document.getElementById("userEmail").textContent = data.email;
-    renderCards(data.accounts);
+    // ส่งข้อมูล history ไปด้วยเสมอ
+    renderAggregate(data.accounts);
+    renderCards(data.accounts, data.history || {});
   } catch(err) {
     console.error(err);
     document.getElementById('cardsEl').innerHTML = '<div class="empty">Error: ' + err.message + '</div>';
   }
 }
-// ... ส่วนของฟังก์ชัน renderCards และฟังก์ชันอื่นๆ ของคุณให้คงไว้เหมือนเดิม ...
 
- 
 function renderAggregate(accounts){
   const totalBalance = accounts.reduce((s,a)=>s+Number(a.balance||0),0);
   const totalProfit  = accounts.reduce((s,a)=>s+Number(a.profit||0),0);
@@ -179,7 +193,7 @@ function renderAggregate(accounts){
 function renderCards(accounts, history){
   const wrap = document.getElementById('cardsEl');
   if(!accounts.length){
-    wrap.innerHTML = '<div class="empty">ไม่พบ Account ที่ผูกกับอีเมลนี้ในชีท — เช็คว่าคอลัมน์ Email ในชีทตรงกับอีเมลที่ login</div>';
+    wrap.innerHTML = '<div class="empty">ไม่พบ Account ที่ผูกกับอีเมลนี้</div>';
     return;
   }
   wrap.innerHTML = accounts.map(acc=>{
@@ -191,26 +205,18 @@ function renderCards(accounts, history){
     return `
     <div class="card ${isExpanded?'expanded':''}" data-acc="${accId}">
       <div class="card-top">
-        <div>
-          <div class="acc-no num">#${accId}</div>
-          <div class="ea-name">${acc.eaName||'—'}</div>
-        </div>
+        <div><div class="acc-no num">#${accId}</div><div class="ea-name">${acc.eaName||'—'}</div></div>
         <div class="updated">${timeAgo(acc.updated)}</div>
       </div>
       <div class="metrics">
         <div class="metric"><div class="label">Balance</div><div class="value num">$${fmtMoney(acc.balance)}</div></div>
         <div class="metric"><div class="label">Equity</div><div class="value num">$${fmtMoney(acc.equity)}</div></div>
         <div class="metric"><div class="label">Profit</div><div class="value num ${profit>=0?'pos':'neg'}">${fmtSigned(profit)}</div></div>
-        <div class="metric">
-          <div class="label">Max DD</div>
-          <div class="value num">${dd.toFixed(2)}%</div>
+        <div class="metric"><div class="label">Max DD</div><div class="value num">${dd.toFixed(2)}%</div>
           <div class="dd-bar-track"><div class="dd-bar-fill" style="width:${Math.min(dd,100)}%"></div></div>
         </div>
       </div>
-      ${rows.length
-        ? (isExpanded ? `<div class="detail-chart"><canvas id="chart-${accId}"></canvas></div>` : `<div class="spark"><canvas id="spark-${accId}"></canvas></div>`)
-        : `<div class="no-history">ยังไม่มีข้อมูลย้อนหลัง — เปิด time-driven trigger ของ snapshotHistory ใน Apps Script เพื่อเริ่มเก็บกราฟ</div>`
-      }
+      ${rows.length ? (isExpanded ? `<div class="detail-chart"><canvas id="chart-${accId}"></canvas></div>` : `<div class="spark"><canvas id="spark-${accId}"></canvas></div>`) : `<div class="no-history">ไม่มีข้อมูลกราฟ</div>`}
     </div>`;
   }).join('');
 
@@ -246,10 +252,7 @@ function drawChart(accId, rows, expanded){
     options: {
       responsive:true, maintainAspectRatio:false, animation:false,
       plugins:{ legend:{display:false}, tooltip:{enabled:expanded} },
-      scales: expanded
-        ? { x:{ ticks:{color:'#7A828C',maxTicksLimit:6,font:{family:'JetBrains Mono',size:10}}, grid:{color:'#242A32'} },
-            y:{ ticks:{color:'#7A828C',font:{family:'JetBrains Mono',size:10}}, grid:{color:'#242A32'} } }
-        : { x:{display:false}, y:{display:false} }
+      scales: expanded ? { x:{ ticks:{color:'#7A828C',maxTicksLimit:6,font:{family:'JetBrains Mono',size:10}}, grid:{color:'#242A32'} }, y:{ ticks:{color:'#7A828C',font:{family:'JetBrains Mono',size:10}}, grid:{color:'#242A32'} } } : { x:{display:false}, y:{display:false} }
     }
   });
 }
