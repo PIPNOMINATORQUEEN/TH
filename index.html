@@ -18,22 +18,12 @@
   body{ background:var(--void); color:var(--text-primary); font-family:'Inter',sans-serif; min-height:100vh; -webkit-font-smoothing:antialiased; }
   .num{ font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums; }
 
-  /* ---------- login gate ---------- */
-  #loginScreen{
-    min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px; padding:24px;
-    text-align:center;
-  }
+  #loginScreen{ min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px; padding:24px; text-align:center; }
   #loginScreen .mark{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:22px; letter-spacing:0.02em; }
   #loginScreen .mark .dot{ color:var(--gold); }
   #loginScreen .sub{ color:var(--text-dim); font-size:13px; max-width:340px; line-height:1.6; }
-  #loginError{ color:var(--red); font-size:13px; display:none; max-width:340px; }
-
-  /* ---------- header ---------- */
-  header{
-    padding:18px 28px 16px; border-bottom:1px solid var(--hairline);
-    position:sticky; top:0; background:rgba(10,12,15,0.92); backdrop-filter:blur(6px); z-index:10;
-    display:none;
-  }
+  
+  header{ padding:18px 28px 16px; border-bottom:1px solid var(--hairline); position:sticky; top:0; background:rgba(10,12,15,0.92); backdrop-filter:blur(6px); z-index:10; display:none; }
   .header-row{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
   .brand{ display:flex; align-items:baseline; gap:10px; }
   .brand .mark{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:18px; letter-spacing:0.02em; }
@@ -45,8 +35,14 @@
   .signout:hover{ border-color:var(--gold-dim); color:var(--text-primary); }
   .goldrule{ height:1px; margin-top:14px; background:linear-gradient(90deg, var(--gold) 0%, rgba(201,162,39,0.05) 45%, transparent 70%); }
 
+  /* ---------- Brand Banner ---------- */
+  .brand-container { padding: 22px 28px 0px 28px; display:none; }
+  .brand-card { background: var(--panel); border: 1px solid var(--gold-dim); padding: 15px 20px; display: flex; align-items: center; gap: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+  .brand-image { width: 50px; height: 50px; object-fit: cover; border-radius: 50%; border: 2px solid var(--gold); }
+  .brand-name { font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 700; letter-spacing: 0.05em; color: var(--gold); text-transform: uppercase; }
+
   /* ---------- aggregate strip ---------- */
-  .agg-strip{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:1px; background:var(--hairline); border:1px solid var(--hairline); margin:18px 28px 0; }
+  .agg-strip{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:1px; background:var(--hairline); border:1px solid var(--hairline); margin:18px 28px 0; display:none; }
   .agg-cell{ background:var(--panel); padding:14px 16px; }
   .agg-cell .label{ font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-dim); margin-bottom:6px; }
   .agg-cell .value{ font-size:22px; font-weight:600; }
@@ -86,48 +82,14 @@
   <div class="mark">PORTFOLIO<span class="dot">·</span>MONITOR</div>
   <div class="sub">เข้าสู่ระบบด้วย Google account เพื่อดูข้อมูล Account ที่ผูกไว้กับอีเมลของคุณ</div>
   <div id="gsiButton"></div>
-  <div id="loginError"></div>
 </div>
 
 <header id="headerEl">
- <!-- ส่วนแสดงแบรนด์และภาพ -->
-<div class="brand-container">
-    <div class="brand-card">
-        <img src="https://img1.pic.in.th/images/178601.jpg" alt="PIP_NOMINATOR_QUEEN_TH" class="brand-image">
-        <div class="brand-name">PIP_NOMINATOR_QUEEN_TH</div>
+  <div class="header-row">
+    <div class="brand">
+      <div class="mark">PORTFOLIO<span class="dot">·</span>MONITOR</div>
+      <div class="sub">Multi-Account EA Dashboard</div>
     </div>
-</div>
-
-<style>
-    .brand-container {
-        padding: 20px 28px 0px 28px;
-    }
-    .brand-card {
-        background: var(--panel);
-        border: 1px solid var(--gold-dim);
-        padding: 15px;
-        display: flex;
-        align-items: center;
-        gap: 20px;
-        border-radius: 8px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-    }
-    .brand-image {
-        width: 60px;
-        height: 60px;
-        object-fit: cover;
-        border-radius: 50%;
-        border: 2px solid var(--gold);
-    }
-    .brand-name {
-        font-family: 'Space Grotesk', sans-serif;
-        font-size: 20px;
-        font-weight: 700;
-        letter-spacing: 0.05em;
-        color: var(--gold);
-        text-transform: uppercase;
-    }
-</style>
     <div class="user-box">
       <span class="email" id="userEmail"></span>
       <button class="signout" id="signOutBtn">Sign out</button>
@@ -136,6 +98,14 @@
   <div class="goldrule"></div>
 </header>
 
+<!-- เพิ่ม Brand Banner ตรงนี้ -->
+<div class="brand-container" id="brandEl">
+    <div class="brand-card">
+        <img src="https://img1.pic.in.th/images/178601.jpg" alt="PIP_NOMINATOR_QUEEN_TH" class="brand-image">
+        <div class="brand-name">PIP_NOMINATOR_QUEEN_TH</div>
+    </div>
+</div>
+
 <div class="agg-strip" id="aggStrip"></div>
 
 <main id="mainEl">
@@ -143,25 +113,19 @@
   <div class="cards" id="cardsEl"><div class="empty">กำลังโหลดข้อมูล…</div></div>
 </main>
 
-<footer id="footerEl">อัปเดตอัตโนมัติทุก 30 วินาที · ถ้าค้างไว้นานเกิน 1 ชม. รีเฟรชหน้าเพื่อ login ใหม่</footer>
+<footer id="footerEl">อัปเดตอัตโนมัติทุก 30 วินาที · ข้อมูลจาก Google Sheet</footer>
 
-
-<!-- คัดลอกเฉพาะ script ด้านล่างนี้ไปแทนที่ของเดิมใน index.html -->
 <script>
-/* ====== ตั้งค่าเริ่มต้น ====== */
 let expandedAccount = null;
 let charts = {};
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzi5pwN7x4oHek4cAPbIW_rEqJSHxFMG5P8vJ3WnDwjEZvfeAmlJ6p-GIqGND1zPOfC/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwlfZatp42vFsdpFxu0RR1blDR4Lmn_YjajIU1KIfL1NtAH--9jSkhoUz-nLN8TlRH_/exec"; 
 const GOOGLE_CLIENT_ID = "146280162769-546li5pjl9cpb53cruqpjuvu0i42i2pu.apps.googleusercontent.com";
 
 let idToken = null;
 let pollTimer = null;
 
 window.onload = () => {
-  google.accounts.id.initialize({
-    client_id: GOOGLE_CLIENT_ID,
-    callback: handleCredentialResponse
-  });
+  google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleCredentialResponse });
   google.accounts.id.renderButton(document.getElementById("gsiButton"), { theme: "filled_black", size: "large", shape: "pill" });
 };
 
@@ -175,11 +139,19 @@ function handleCredentialResponse(response){
 function showDashboard(){
   document.getElementById("loginScreen").style.display = "none";
   document.getElementById("headerEl").style.display = "block";
+  document.getElementById("brandEl").style.display = "block"; // แสดงแบรนด์
+  document.getElementById("aggStrip").style.display = "grid";
   document.getElementById("mainEl").style.display = "block";
   document.getElementById("footerEl").style.display = "block";
 }
 
-/* ====== ฟังก์ชัน Helper ====== */
+document.getElementById("signOutBtn").addEventListener("click", () => {
+  idToken = null;
+  clearInterval(pollTimer);
+  google.accounts.id.disableAutoSelect();
+  location.reload();
+});
+
 function fmtMoney(n){ return (Number(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function fmtSigned(n){ const v=Number(n)||0; return (v>=0?'+':'')+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function timeAgo(dateStr){
@@ -193,6 +165,24 @@ function timeAgo(dateStr){
   return d.toLocaleDateString();
 }
 
+// ฟังก์ชันคำนวณ Profit Week บนเบราว์เซอร์
+function calculateProfitWeek(currentProfit, historyRows) {
+  if (!historyRows || historyRows.length === 0) return 0;
+  
+  const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+  let pastProfit = null;
+  
+  // ไล่หาข้อมูลย้อนหลังจากเก่าไปใหม่ เพื่อหาจุดที่ใกล้ 7 วันที่สุด
+  for (let i = historyRows.length - 1; i >= 0; i--) {
+    const rowTime = new Date(historyRows[i].updated).getTime();
+    if (rowTime <= sevenDaysAgo) {
+      pastProfit = Number(historyRows[i].profit || 0);
+      break;
+    }
+  }
+  return pastProfit !== null ? (currentProfit - pastProfit) : 0;
+}
+
 async function fetchData(){
   if(!idToken) return;
   try {
@@ -200,11 +190,9 @@ async function fetchData(){
     const data = await res.json();
     if(data.status !== "ok") throw new Error(data.message);
     document.getElementById("userEmail").textContent = data.email;
-    // ส่งข้อมูล history ไปด้วยเสมอ
     renderAggregate(data.accounts);
     renderCards(data.accounts, data.history || {});
   } catch(err) {
-    console.error(err);
     document.getElementById('cardsEl').innerHTML = '<div class="empty">Error: ' + err.message + '</div>';
   }
 }
@@ -231,10 +219,14 @@ function renderCards(accounts, history){
   }
   wrap.innerHTML = accounts.map(acc=>{
     const accId = String(acc.account);
-    const profit = Number(acc.profit||0);
+    const currentProfit = Number(acc.profit||0);
     const dd = Number(acc.maxdd||0);
     const isExpanded = expandedAccount === accId;
     const rows = history[accId] || [];
+    
+    // คำนวณ Profit Week
+    const profitWeek = calculateProfitWeek(currentProfit, rows);
+
     return `
     <div class="card ${isExpanded?'expanded':''}" data-acc="${accId}">
       <div class="card-top">
@@ -244,12 +236,15 @@ function renderCards(accounts, history){
       <div class="metrics">
         <div class="metric"><div class="label">Balance</div><div class="value num">$${fmtMoney(acc.balance)}</div></div>
         <div class="metric"><div class="label">Equity</div><div class="value num">$${fmtMoney(acc.equity)}</div></div>
-        <div class="metric"><div class="label">Profit</div><div class="value num ${profit>=0?'pos':'neg'}">${fmtSigned(profit)}</div></div>
-        <div class="metric"><div class="label">Max DD</div><div class="value num">${dd.toFixed(2)}%</div>
+        <div class="metric"><div class="label">Profit Today</div><div class="value num ${currentProfit>=0?'pos':'neg'}">${fmtSigned(currentProfit)}</div></div>
+        <div class="metric"><div class="label">Profit Week</div><div class="value num ${profitWeek>=0?'pos':'neg'}">${fmtSigned(profitWeek)}</div></div>
+        <div class="metric"><div class="label">Max DD</div><div class="value num">${dd.toFixed(2)}%</div></div>
+        <div class="metric">
+          <div class="label">Risk Status</div>
           <div class="dd-bar-track"><div class="dd-bar-fill" style="width:${Math.min(dd,100)}%"></div></div>
         </div>
       </div>
-      ${rows.length ? (isExpanded ? `<div class="detail-chart"><canvas id="chart-${accId}"></canvas></div>` : `<div class="spark"><canvas id="spark-${accId}"></canvas></div>`) : `<div class="no-history">ไม่มีข้อมูลกราฟ</div>`}
+      ${rows.length ? (isExpanded ? `<div class="detail-chart"><canvas id="chart-${accId}"></canvas></div>` : `<div class="spark"><canvas id="spark-${accId}"></canvas></div>`) : `<div class="no-history">กำลังรอข้อมูลกราฟ...</div>`}
     </div>`;
   }).join('');
 
