@@ -112,8 +112,12 @@
 
 <footer id="footerEl">อัปเดตอัตโนมัติทุก 30 วินาที · ข้อมูลจาก Google Sheet · ถ้าค้างไว้นานเกิน 1 ชม. รีเฟรชหน้าเพื่อ login ใหม่</footer>
 
+
 <!-- คัดลอกเฉพาะ script ด้านล่างนี้ไปแทนที่ของเดิมใน index.html -->
 <script>
+  /* ====== เพิ่มบรรทัดนี้เข้าไปในส่วนต้นของ script ====== */
+let expandedAccount = null;
+let charts = {};
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzi5pwN7x4oHek4cAPbIW_rEqJSHxFMG5P8vJ3WnDwjEZvfeAmlJ6p-GIqGND1zPOfC/exec"; 
 const GOOGLE_CLIENT_ID = "146280162769-546li5pjl9cpb53cruqpjuvu0i42i2pu.apps.googleusercontent.com";
 
@@ -156,7 +160,8 @@ async function fetchData(){
   }
 }
 // ... ส่วนของฟังก์ชัน renderCards และฟังก์ชันอื่นๆ ของคุณให้คงไว้เหมือนเดิม ...
-
+</script>
+  <script>
 function renderAggregate(accounts){
   const totalBalance = accounts.reduce((s,a)=>s+Number(a.balance||0),0);
   const totalProfit  = accounts.reduce((s,a)=>s+Number(a.profit||0),0);
