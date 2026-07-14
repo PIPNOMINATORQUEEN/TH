@@ -118,7 +118,7 @@
 <script>
 let expandedAccount = null;
 let charts = {};
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwlfZatp42vFsdpFxu0RR1blDR4Lmn_YjajIU1KIfL1NtAH--9jSkhoUz-nLN8TlRH_/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxEHNtDmBXTFVgZAkyyuETlyeQlaPaUwuzCwAaOKvAsd9e9yMqcJpXzxo3SMBP73urB/exec"; 
 const GOOGLE_CLIENT_ID = "146280162769-546li5pjl9cpb53cruqpjuvu0i42i2pu.apps.googleusercontent.com";
 
 let idToken = null;
@@ -205,7 +205,7 @@ function renderAggregate(accounts){
     {label:'Accounts', value: accounts.length, cls:''},
     {label:'Total Balance', value:'$'+fmtMoney(totalBalance), cls:''},
     {label:'Total Floating P/L', value: fmtSigned(totalProfit), cls: totalProfit>=0?'pos':'neg'},
-    {label:'Worst Max DD', value: worstDD.toFixed(2)+'%', cls: worstDD>10?'neg':''},
+    {label:'Worst Max DD', value: worstDD.toFixed(2)+'$', cls: worstDD>10?'neg':''},
   ];
   document.getElementById('aggStrip').innerHTML = cells.map(c=>`
     <div class="agg-cell"><div class="label">${c.label}</div><div class="value num ${c.cls}">${c.value}</div></div>`).join('');
