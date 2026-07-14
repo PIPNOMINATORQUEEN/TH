@@ -238,7 +238,7 @@ function renderCards(accounts, history){
         <div class="metric"><div class="label">Equity</div><div class="value num">$${fmtMoney(acc.equity)}</div></div>
         <div class="metric"><div class="label">Profit Today</div><div class="value num ${currentProfit>=0?'pos':'neg'}">${fmtSigned(currentProfit)}</div></div>
         <div class="metric"><div class="label">Profit Week</div><div class="value num ${profitWeek>=0?'pos':'neg'}">${fmtSigned(profitWeek)}</div></div>
-        <div class="metric"><div class="label">Max DD</div><div class="value num">${dd.toFixed(2)}%</div></div>
+        <div class="metric"><div class="label">Max DD</div><div class="value num">${dd.toFixed(2)}$</div></div>
         <div class="metric">
           <div class="label">Risk Status</div>
           <div class="dd-bar-track"><div class="dd-bar-fill" style="width:${Math.min(dd,100)}%"></div></div>
