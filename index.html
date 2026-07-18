@@ -31,17 +31,25 @@
 </head>
 <body>
 
-<div id="loginScreen" style="height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;">
-  <div style="font-size:24px; font-weight:700; margin-bottom:20px;">PORTFOLIO MONITOR</div>
+<div id="loginScreen">
+  <div class="mark">PORTFOLIO<span class="dot">·</span>MONITOR</div>
+  <div class="sub">เข้าสู่ระบบด้วย Google account เพื่อดูข้อมูล Account ที่ผูกไว้กับอีเมลของคุณ</div>
   <div id="gsiButton"></div>
 </div>
 
 <header id="headerEl">
-  <div style="display:flex; justify-content:space-between;">
-    <span id="userEmail"></span> <button onclick="location.reload()">Sign out</button>
+  <div class="header-row">
+    <div class="brand">
+      <div class="mark">PORTFOLIO<span class="dot">·</span>MONITOR</div>
+      <div class="sub">Multi-Account EA Dashboard</div>
+    </div>
+    <div class="user-box">
+      <span class="email" id="userEmail"></span>
+      <button class="signout" id="signOutBtn">Sign out</button>
+    </div>
   </div>
+  <div class="goldrule"></div>
 </header>
-
 <div id="summaryBox">
     <div class="sum-label">TOTAL FLOATING P/L</div>
     <div id="totalToday" class="sum-val">0.00 USC</div>
