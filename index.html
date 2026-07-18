@@ -6,51 +6,28 @@
 <title>Portfolio Monitor</title>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root{ --void:#0A0C0F; --panel:#12151A; --gold:#C9A227; --green:#3ECF8E; --red:#EF5350; --text-primary:#E7E5E0; --text-dim:#7A828C; }
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{ background:var(--void); color:var(--text-primary); font-family:'Inter',sans-serif; min-height:100vh; }
-  .num{ font-family:'JetBrains Mono',monospace; }
-  
-  /* Alert Modal */
+  :root{ --void:#0A0C0F; --panel:#12151A; --gold:#C9A227; --green:#3ECF8E; --red:#EF5350; --text-primary:#E7E5E0; }
+  body{ background:var(--void); color:var(--text-primary); font-family:'Inter',sans-serif; }
   #alertModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; align-items: center; justify-content: center; }
   .modal-content { background: var(--panel); border: 1px solid var(--red); padding: 30px; border-radius: 12px; text-align: center; max-width: 400px; width: 90%; }
-  
-  /* Dashboard Style */
-  header{ padding: 20px 28px; border-bottom: 1px solid #242A32; display:none; }
   #summaryBox { padding: 20px 28px; border-bottom: 1px solid #242A32; display: none; }
-  .sum-label { color: var(--text-dim); font-size: 11px; text-transform: uppercase; }
-  .sum-val { font-size: 32px; font-weight: 700; margin-bottom: 15px; }
-  .dd-val { color: var(--red); font-size: 20px; font-weight: 600; }
-  
-  .card{ background:var(--panel); border:1px solid #C9A227; padding:16px; margin: 15px 28px; border-radius: 4px; }
-  .metrics{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top: 10px; }
+  .sum-val { font-size: 32px; font-weight: 700; }
+  .card{ background:var(--panel); border:1px solid #C9A227; padding:16px; margin: 15px 28px; cursor:pointer; }
   .pos{ color:var(--green); } .neg{ color:var(--red); }
+  .detail-chart{ margin-top:15px; height:200px; }
 </style>
 </head>
 <body>
 
-<div id="loginScreen">
-  <div class="mark">PORTFOLIO<span class="dot">·</span>MONITOR</div>
-  <div class="sub">เข้าสู่ระบบด้วย Google account เพื่อดูข้อมูล Account ที่ผูกไว้กับอีเมลของคุณ</div>
+<div id="loginScreen" style="height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+  <div class="mark" style="font-size:24px; font-weight:700;">PORTFOLIO MONITOR</div>
   <div id="gsiButton"></div>
 </div>
 
-<header id="headerEl">
-  <div class="header-row">
-    <div class="brand">
-      <div class="mark">PORTFOLIO<span class="dot">·</span>MONITOR</div>
-      <div class="sub">Multi-Account EA Dashboard</div>
-    </div>
-    <div class="user-box">
-      <span class="email" id="userEmail"></span>
-      <button class="signout" id="signOutBtn">Sign out</button>
-    </div>
-  </div>
-  <div class="goldrule"></div>
-</header>
 <div id="summaryBox">
+    <div class="sum-label">TOTAL ACCOUNTS</div>
+    <div id="totalAccounts" class="sum-val" style="color:var(--gold);">0</div>
     <div class="sum-label">TOTAL FLOATING P/L</div>
     <div id="totalToday" class="sum-val">0.00 USC</div>
     <div class="sum-label">WORST MAX DD</div>
@@ -61,45 +38,41 @@
 
 <div id="alertModal">
   <div class="modal-content">
-    <h2 style="color:var(--red);">⚠️ WARNING</h2>
+    <h2 class="modal-title" style="color:var(--red);">⚠️ WARNING</h2>
     <div id="alertMessage" style="margin:20px 0;"></div>
-    <button onclick="document.getElementById('alertModal').style.display='none'" style="padding:10px 20px;">รับทราบ</button>
+    <button onclick="document.getElementById('alertModal').style.display='none'">รับทราบ</button>
   </div>
 </div>
 
 <script>
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxhonKaOEh5rXXHThttjEps4W1KTEhPfntRwPUuhqIqHkZhg8odWnA9XshOzljJ8368/exec";
-const ALERT_STEP_1 = 1500;
-const ALERT_STEP_2 = 2500;
-let idToken = null, alertedAccounts = new Map();
-const alertSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+const GOOGLE_CLIENT_ID = "146280162769-546li5pjl9cpb53cruqpjuvu0i42i2pu.apps.googleusercontent.com";
+let idToken = null, alertedAccounts = new Map(), charts = {};
 
-function handleCredentialResponse(response){
-  idToken = response.credential;
-  document.getElementById("loginScreen").style.display = "none";
-  document.getElementById("headerEl").style.display = "block";
-  document.getElementById("summaryBox").style.display = "block";
-  fetchData();
-  setInterval(fetchData, 30000);
-}
+window.onload = () => {
+  google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: res => {
+    idToken = res.credential;
+    document.getElementById("loginScreen").style.display = "none";
+    document.getElementById("summaryBox").style.display = "block";
+    fetchData();
+    setInterval(fetchData, 30000);
+  }});
+  google.accounts.id.renderButton(document.getElementById("gsiButton"), { theme: "filled_black", size: "large" });
+};
 
-// ระบบคำนวณกำไรสะสมรายสัปดาห์ (จันทร์-ศุกร์)
 function calculateProfitWeek(currentProfit, historyRows) {
   if (!historyRows || historyRows.length === 0) return 0;
-  const now = new Date();
-  const diffToMon = now.getDay() === 0 ? 6 : now.getDay() - 1;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - diffToMon);
+  const monday = new Date();
+  monday.setDate(monday.getDate() - (monday.getDay() === 0 ? 6 : monday.getDay() - 1));
   monday.setHours(0,0,0,0);
-  
-  let baseProfit = Number(historyRows[0].profit || 0);
+  let base = Number(historyRows[0].profit || 0);
   for (let i = historyRows.length - 1; i >= 0; i--) {
-    if (new Date(historyRows[i].updated).getTime() < monday.getTime()) {
-      baseProfit = Number(historyRows[i].profit || 0);
+    if (new Date(historyRows[i].updated) < monday) {
+      base = Number(historyRows[i].profit || 0);
       break;
     }
   }
-  return currentProfit - baseProfit;
+  return currentProfit - base;
 }
 
 async function fetchData(){
@@ -109,40 +82,55 @@ async function fetchData(){
   const totalPL = data.accounts.reduce((s,a) => s + Number(a.profit||0), 0);
   const worstDD = Math.max(...data.accounts.map(a => Number(a.maxdd||0)));
   
+  // เพิ่มการแสดงจำนวนพอร์ตตรงนี้
+  document.getElementById('totalAccounts').innerText = data.accounts.length;
+  
   document.getElementById('totalToday').innerHTML = `<span class="${totalPL>=0?'pos':'neg'}">${totalPL>=0?'+':''}${totalPL.toFixed(2)} USC</span>`;
   document.getElementById('totalDD').innerText = worstDD.toFixed(2) + " USC";
 
+  // ... (ส่วนที่เหลือของฟังก์ชันยังคงเดิม)
   document.getElementById('cardsEl').innerHTML = data.accounts.map(acc => {
-    const pw = calculateProfitWeek(Number(acc.profit), data.history[acc.account] || []);
+    // ...
+    const rows = data.history[acc.account] || [];
+    const pw = calculateProfitWeek(Number(acc.profit), rows);
     return `
-    <div class="card">
+    <div class="card" onclick="toggleExpand('${acc.account}')">
       <h3>#${acc.account}</h3>
       <div class="metrics">
         <div>BALANCE: ${Number(acc.balance).toFixed(2)} USC</div>
-        <div>EQUITY: ${Number(acc.equity).toFixed(2)} USC</div>
-        <div>PROFIT TODAY: <span class="${Number(acc.profit)>=0?'pos':'neg'}">${Number(acc.profit).toFixed(2)} USC</span></div>
+        <div>PROFIT TODAY: <span class="${acc.profit>=0?'pos':'neg'}">${Number(acc.profit).toFixed(2)} USC</span></div>
         <div>PROFIT WEEK: <span class="${pw>=0?'pos':'neg'}">${pw.toFixed(2)} USC</span></div>
         <div>MAX DD: ${Number(acc.maxdd).toFixed(2)} USC</div>
       </div>
+      <div class="detail-chart"><canvas id="chart-${acc.account}"></canvas></div>
     </div>`;
   }).join('');
   
+  data.accounts.forEach(acc => drawChart(acc.account, data.history[acc.account] || []));
   checkAlerts(data.accounts);
+}
+
+function drawChart(id, rows) {
+  const ctx = document.getElementById('chart-'+id).getContext('2d');
+  if(charts[id]) charts[id].destroy();
+  charts[id] = new Chart(ctx, {
+    type: 'line',
+    data: { labels: rows.map(r=>r.updated), datasets: [{ data: rows.map(r=>r.profit), borderColor: '#C9A227', pointRadius:0 }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} }
+  });
 }
 
 function checkAlerts(accounts) {
   accounts.forEach(acc => {
     const dd = Number(acc.maxdd || 0);
     const id = String(acc.account);
-    if (dd > ALERT_STEP_2 && (alertedAccounts.get(id) !== 2)) {
+    if (dd > 2500 && alertedAccounts.get(id) !== 2) {
       alertedAccounts.set(id, 2);
       triggerAlert("🚨 CRITICAL: DD > 2500 USC", `พอร์ต #${id} ยอด DD: ${dd.toFixed(2)} USC`, true);
-    } else if (dd > ALERT_STEP_1 && (alertedAccounts.get(id) !== 1)) {
+    } else if (dd > 1500 && alertedAccounts.get(id) !== 1) {
       alertedAccounts.set(id, 1);
       triggerAlert("⚠️ WARNING: DD > 1500 USC", `พอร์ต #${id} ยอด DD: ${dd.toFixed(2)} USC`, false);
-    } else if (dd <= ALERT_STEP_1) {
-      alertedAccounts.delete(id);
-    }
+    } else if (dd <= 1500) alertedAccounts.delete(id);
   });
 }
 
@@ -150,8 +138,9 @@ function triggerAlert(title, msg, double) {
   document.querySelector('.modal-title').innerText = title;
   document.getElementById('alertMessage').innerText = msg;
   document.getElementById('alertModal').style.display = 'flex';
-  alertSound.play();
-  if(double) setTimeout(()=>alertSound.play(), 600);
+  const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+  audio.play();
+  if(double) setTimeout(()=>audio.play(), 600);
 }
 </script>
 </body>
