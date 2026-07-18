@@ -76,7 +76,7 @@ async function fetchData(){
   const totalDD = Math.max(...data.accounts.map(a => Number(a.maxdd||0)));
   
   document.getElementById('totalToday').innerHTML = `<span class="${totalToday>=0?'pos':'neg'}">${totalToday>=0?'+':''}${totalToday.toFixed(2)} USC</span>`;
-  document.getElementById('totalDD').innerText = totalDD.toFixed(2) + " USC";
+  document.getElementById('totalDD').textContent = totalDD.toFixed(2) + " USC";
 
   document.getElementById('cardsEl').innerHTML = data.accounts.map(acc => {
     const pw = calculateProfitWeek(Number(acc.profit), data.history[acc.account] || []);
