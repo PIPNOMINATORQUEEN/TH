@@ -16,7 +16,16 @@
   #alertModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; align-items: center; justify-content: center; }
   .modal-content { background: var(--panel); border: 1px solid var(--red); padding: 30px; border-radius: 12px; text-align: center; max-width: 400px; width: 90%; }
   
+  /* --- ส่วนที่แก้ไข Layout ด้านบน --- */
   #summaryBox { padding: 20px 28px; border-bottom: 1px solid #242A32; display: none; }
+  .summary-container { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
+  .stats-group { display: flex; flex-direction: column; }
+  
+  .brand-banner { display: flex; align-items: center; gap: 15px; background: rgba(20, 25, 30, 0.5); padding: 15px 25px; border-radius: 12px; border: 1px solid var(--gold); box-shadow: 0 4px 20px rgba(201, 162, 39, 0.15); }
+  .brand-banner img { width: 75px; height: 75px; object-fit: cover; border-radius: 50%; border: 2px solid var(--gold); }
+  .brand-banner .brand-text { font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 700; color: var(--gold); letter-spacing: 0.05em; line-height: 1.2; }
+  /* ------------------------------ */
+
   .sum-label { color: #7A828C; font-size: 11px; text-transform: uppercase; margin-top: 10px; }
   .sum-label:first-child { margin-top: 0; }
   .sum-val { font-size: 32px; font-weight: 700; }
@@ -36,14 +45,26 @@
 </div>
 
 <div id="summaryBox">
-    <div class="sum-label">TOTAL ACCOUNTS</div>
-    <div id="totalAccounts" class="sum-val" style="color:var(--gold);">0</div>
+  <div class="summary-container">
+    <!-- ฝั่งซ้าย: ข้อมูลตัวเลข -->
+    <div class="stats-group">
+      <div class="sum-label">TOTAL ACCOUNTS</div>
+      <div id="totalAccounts" class="sum-val" style="color:var(--gold);">0</div>
+      
+      <div class="sum-label">TOTAL FLOATING P/L</div>
+      <div id="totalToday" class="sum-val">0.00 USC</div>
+      
+      <div class="sum-label">WORST MAX DD</div>
+      <div id="totalDD" class="dd-val">0.00 USC</div>
+    </div>
     
-    <div class="sum-label">TOTAL FLOATING P/L</div>
-    <div id="totalToday" class="sum-val">0.00 USC</div>
-    
-    <div class="sum-label">WORST MAX DD</div>
-    <div id="totalDD" class="dd-val">0.00 USC</div>
+    <!-- ฝั่งขวา: โลโก้และชื่อ -->
+    <div class="brand-banner">
+      <!-- เปลี่ยน src เป็น URL ของรูปภาพได้ถ้าไม่ได้อัปลง Github -->
+      <img src="178601.jpg" alt="PIP NOMINATOR QUANTUM">
+      <div class="brand-text">PIP_NOMINATOR<br>QUANTUM_TH</div>
+    </div>
+  </div>
 </div>
 
 <main id="mainEl"><div id="cardsEl"></div></main>
@@ -59,7 +80,7 @@
 <script>
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxhonKaOEh5rXXHThttjEps4W1KTEhPfntRwPUuhqIqHkZhg8odWnA9XshOzljJ8368/exec";
 const GOOGLE_CLIENT_ID = "146280162769-546li5pjl9cpb53cruqpjuvu0i42i2pu.apps.googleusercontent.com";
-let idToken = null, charts = {}; // เอา alertedAccounts ออก เพราะย้ายไปใช้ localStorage แทน
+let idToken = null, charts = {};
 
 window.onload = () => {
   google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: res => {
@@ -177,10 +198,9 @@ function drawChart(id, rows) {
 
 // ฟังก์ชันเช็ค Alert พร้อมระบบจดจำลงเครื่อง (LocalStorage) รีเซ็ตเมื่อขึ้นวันใหม่
 function checkAlerts(accounts) {
-  const today = new Date().toLocaleDateString('en-CA'); // ดึงวันที่ปัจจบัน เช่น "2026-07-19"
+  const today = new Date().toLocaleDateString('en-CA'); 
   let savedAlerts = JSON.parse(localStorage.getItem('ddAlertsData')) || {};
   
-  // เช็คว่าถ้าข้ามวันแล้ว ให้ลบประวัติการเตือนทิ้ง เริ่มนับใหม่
   if (savedAlerts.date !== today) {
     savedAlerts = { date: today, triggered: {} };
   }
@@ -190,26 +210,24 @@ function checkAlerts(accounts) {
   accounts.forEach(acc => {
     const dd = Number(acc.maxdd || 0);
     const id = String(acc.account);
-    const currentAlertLevel = savedAlerts.triggered[id] || 0; // 0=ยังไม่เตือน, 1=เตือน 1500, 2=เตือน 2500
+    const currentAlertLevel = savedAlerts.triggered[id] || 0; 
 
     if (dd > 2500 && currentAlertLevel !== 2) {
-      savedAlerts.triggered[id] = 2; // จำว่าเตือนระดับ 2 ไปแล้ว
+      savedAlerts.triggered[id] = 2; 
       hasUpdate = true;
       triggerAlert("🚨 CRITICAL: DD > 2500 USC", `พอร์ต <b class="num">#${id}</b> <br>ยอด Drawdown ปัจจุบัน: <b>${dd.toFixed(2)} USC</b>`, true);
     } 
     else if (dd > 1500 && dd <= 2500 && currentAlertLevel !== 1 && currentAlertLevel !== 2) {
-      savedAlerts.triggered[id] = 1; // จำว่าเตือนระดับ 1 ไปแล้ว
+      savedAlerts.triggered[id] = 1; 
       hasUpdate = true;
       triggerAlert("⚠️ WARNING: DD > 1500 USC", `พอร์ต <b class="num">#${id}</b> <br>ยอด Drawdown ปัจจุบัน: <b>${dd.toFixed(2)} USC</b>`, false);
     } 
     else if (dd <= 1500 && currentAlertLevel > 0) {
-      // ถ้ายอดพอร์ตกลับมาต่ำกว่า 1500 ให้ล้างค่าความจำ เพื่อเตรียมเตือนใหม่หาก DD ขึ้นไปอีกรอบ
       delete savedAlerts.triggered[id];
       hasUpdate = true;
     }
   });
 
-  // บันทึกสถานะการแจ้งเตือนลงเครื่อง
   if (hasUpdate) {
     localStorage.setItem('ddAlertsData', JSON.stringify(savedAlerts));
   }
