@@ -6,14 +6,24 @@
 <title>Portfolio Monitor</title>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{ --void:#0A0C0F; --panel:#12151A; --gold:#C9A227; --green:#3ECF8E; --red:#EF5350; --text-primary:#E7E5E0; }
-  body{ background:var(--void); color:var(--text-primary); font-family:'Inter',sans-serif; }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{ background:var(--void); color:var(--text-primary); font-family:'Inter',sans-serif; min-height:100vh; }
+  .num{ font-family:'JetBrains Mono',monospace; }
+  
   #alertModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; align-items: center; justify-content: center; }
   .modal-content { background: var(--panel); border: 1px solid var(--red); padding: 30px; border-radius: 12px; text-align: center; max-width: 400px; width: 90%; }
+  
   #summaryBox { padding: 20px 28px; border-bottom: 1px solid #242A32; display: none; }
+  .sum-label { color: #7A828C; font-size: 11px; text-transform: uppercase; margin-top: 10px; }
+  .sum-label:first-child { margin-top: 0; }
   .sum-val { font-size: 32px; font-weight: 700; }
-  .card{ background:var(--panel); border:1px solid #C9A227; padding:16px; margin: 15px 28px; cursor:pointer; }
+  .dd-val { color: var(--red); font-size: 20px; font-weight: 600; }
+  
+  .card{ background:var(--panel); border:1px solid #C9A227; padding:16px; margin: 15px 28px; cursor:pointer; border-radius: 6px;}
+  .metrics{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;}
   .pos{ color:var(--green); } .neg{ color:var(--red); }
   .detail-chart{ margin-top:15px; height:200px; }
 </style>
@@ -21,15 +31,17 @@
 <body>
 
 <div id="loginScreen" style="height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;">
-  <div class="mark" style="font-size:24px; font-weight:700;">PORTFOLIO MONITOR</div>
+  <div class="mark" style="font-size:24px; font-weight:700; margin-bottom: 20px;">PORTFOLIO MONITOR</div>
   <div id="gsiButton"></div>
 </div>
 
 <div id="summaryBox">
     <div class="sum-label">TOTAL ACCOUNTS</div>
     <div id="totalAccounts" class="sum-val" style="color:var(--gold);">0</div>
+    
     <div class="sum-label">TOTAL FLOATING P/L</div>
     <div id="totalToday" class="sum-val">0.00 USC</div>
+    
     <div class="sum-label">WORST MAX DD</div>
     <div id="totalDD" class="dd-val">0.00 USC</div>
 </div>
@@ -39,15 +51,15 @@
 <div id="alertModal">
   <div class="modal-content">
     <h2 class="modal-title" style="color:var(--red);">⚠️ WARNING</h2>
-    <div id="alertMessage" style="margin:20px 0;"></div>
-    <button onclick="document.getElementById('alertModal').style.display='none'">รับทราบ</button>
+    <div id="alertMessage" style="margin:20px 0; line-height: 1.6;"></div>
+    <button onclick="document.getElementById('alertModal').style.display='none'" style="padding:10px 20px; background:var(--red); color:#fff; border:none; border-radius:4px; font-weight:600; cursor:pointer;">รับทราบ / ปิดแจ้งเตือน</button>
   </div>
 </div>
 
 <script>
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxhonKaOEh5rXXHThttjEps4W1KTEhPfntRwPUuhqIqHkZhg8odWnA9XshOzljJ8368/exec";
 const GOOGLE_CLIENT_ID = "146280162769-546li5pjl9cpb53cruqpjuvu0i42i2pu.apps.googleusercontent.com";
-let idToken = null, alertedAccounts = new Map(), charts = {};
+let idToken = null, charts = {}; // เอา alertedAccounts ออก เพราะย้ายไปใช้ localStorage แทน
 
 window.onload = () => {
   google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: res => {
@@ -57,90 +69,159 @@ window.onload = () => {
     fetchData();
     setInterval(fetchData, 30000);
   }});
-  google.accounts.id.renderButton(document.getElementById("gsiButton"), { theme: "filled_black", size: "large" });
+  google.accounts.id.renderButton(document.getElementById("gsiButton"), { theme: "filled_black", size: "large", shape: "pill" });
 };
 
+// ฟังก์ชันคำนวณ Profit Week
 function calculateProfitWeek(currentProfit, historyRows) {
-  if (!historyRows || historyRows.length === 0) return 0;
-  const monday = new Date();
-  monday.setDate(monday.getDate() - (monday.getDay() === 0 ? 6 : monday.getDay() - 1));
+  if (!historyRows || historyRows.length === 0) return currentProfit;
+  
+  const now = new Date();
+  const currentDay = now.getDay();
+  const diffToMon = currentDay === 0 ? 6 : currentDay - 1;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - diffToMon);
   monday.setHours(0,0,0,0);
-  let base = Number(historyRows[0].profit || 0);
-  for (let i = historyRows.length - 1; i >= 0; i--) {
-    if (new Date(historyRows[i].updated) < monday) {
-      base = Number(historyRows[i].profit || 0);
-      break;
+  
+  const todayStart = new Date(now);
+  todayStart.setHours(0,0,0,0);
+
+  const dailyFinalProfits = {};
+
+  for (let i = 0; i < historyRows.length; i++) {
+    const rowDate = new Date(historyRows[i].updated);
+    if (rowDate >= monday && rowDate < todayStart) {
+      const dateKey = rowDate.getFullYear() + "-" + (rowDate.getMonth()+1) + "-" + rowDate.getDate();
+      dailyFinalProfits[dateKey] = Number(historyRows[i].profit || 0);
     }
   }
-  return currentProfit - base;
+
+  let pastDaysProfit = 0;
+  for (let dateKey in dailyFinalProfits) {
+    pastDaysProfit += dailyFinalProfits[dateKey];
+  }
+
+  return pastDaysProfit + currentProfit;
 }
 
 async function fetchData(){
-  const res = await fetch(SCRIPT_URL + "?id_token=" + encodeURIComponent(idToken));
-  const data = await res.json();
-  
-  const totalPL = data.accounts.reduce((s,a) => s + Number(a.profit||0), 0);
-  const worstDD = Math.max(...data.accounts.map(a => Number(a.maxdd||0)));
-  
-  // เพิ่มการแสดงจำนวนพอร์ตตรงนี้
-  document.getElementById('totalAccounts').innerText = data.accounts.length;
-  
-  document.getElementById('totalToday').innerHTML = `<span class="${totalPL>=0?'pos':'neg'}">${totalPL>=0?'+':''}${totalPL.toFixed(2)} USC</span>`;
-  document.getElementById('totalDD').innerText = worstDD.toFixed(2) + " USC";
+  if(!idToken) return;
+  try {
+    const res = await fetch(SCRIPT_URL + "?id_token=" + encodeURIComponent(idToken));
+    const data = await res.json();
+    
+    const totalPL = data.accounts.reduce((s,a) => s + Number(a.profit||0), 0);
+    const worstDD = Math.max(...data.accounts.map(a => Number(a.maxdd||0)));
+    
+    document.getElementById('totalAccounts').innerText = data.accounts.length;
+    document.getElementById('totalToday').innerHTML = `<span class="${totalPL>=0?'pos':'neg'}">${totalPL>=0?'+':''}${totalPL.toFixed(2)} USC</span>`;
+    document.getElementById('totalDD').innerText = worstDD.toFixed(2) + " USC";
 
-  // ... (ส่วนที่เหลือของฟังก์ชันยังคงเดิม)
-  document.getElementById('cardsEl').innerHTML = data.accounts.map(acc => {
-    // ...
-    const rows = data.history[acc.account] || [];
-    const pw = calculateProfitWeek(Number(acc.profit), rows);
-    return `
-    <div class="card" onclick="toggleExpand('${acc.account}')">
-      <h3>#${acc.account}</h3>
-      <div class="metrics">
-        <div>BALANCE: ${Number(acc.balance).toFixed(2)} USC</div>
-        <div>PROFIT TODAY: <span class="${acc.profit>=0?'pos':'neg'}">${Number(acc.profit).toFixed(2)} USC</span></div>
-        <div>PROFIT WEEK: <span class="${pw>=0?'pos':'neg'}">${pw.toFixed(2)} USC</span></div>
-        <div>MAX DD: ${Number(acc.maxdd).toFixed(2)} USC</div>
-      </div>
-      <div class="detail-chart"><canvas id="chart-${acc.account}"></canvas></div>
-    </div>`;
-  }).join('');
-  
-  data.accounts.forEach(acc => drawChart(acc.account, data.history[acc.account] || []));
-  checkAlerts(data.accounts);
+    document.getElementById('cardsEl').innerHTML = data.accounts.map(acc => {
+      const rows = data.history[acc.account] || [];
+      const pw = calculateProfitWeek(Number(acc.profit), rows);
+      return `
+      <div class="card">
+        <h3 class="num">#${acc.account}</h3>
+        <div class="metrics">
+          <div><div style="font-size:10px;color:#7A828C;">BALANCE</div><div class="num">${Number(acc.balance).toFixed(2)} USC</div></div>
+          <div><div style="font-size:10px;color:#7A828C;">MAX DD</div><div class="num">${Number(acc.maxdd).toFixed(2)} USC</div></div>
+          <div><div style="font-size:10px;color:#7A828C;">PROFIT TODAY</div><div class="num ${acc.profit>=0?'pos':'neg'}">${acc.profit>=0?'+':''}${Number(acc.profit).toFixed(2)} USC</div></div>
+          <div><div style="font-size:10px;color:#7A828C;">PROFIT WEEK</div><div class="num ${pw>=0?'pos':'neg'}">${pw>=0?'+':''}${pw.toFixed(2)} USC</div></div>
+        </div>
+        <div class="detail-chart"><canvas id="chart-${acc.account}"></canvas></div>
+      </div>`;
+    }).join('');
+    
+    data.accounts.forEach(acc => drawChart(acc.account, data.history[acc.account] || []));
+    checkAlerts(data.accounts);
+  } catch (e) {
+    console.error("Error fetching data: ", e);
+  }
 }
 
+// ฟังก์ชันวาดกราฟ
 function drawChart(id, rows) {
   const ctx = document.getElementById('chart-'+id).getContext('2d');
   if(charts[id]) charts[id].destroy();
   charts[id] = new Chart(ctx, {
     type: 'line',
-    data: { labels: rows.map(r=>r.updated), datasets: [{ data: rows.map(r=>r.profit), borderColor: '#C9A227', pointRadius:0 }] },
-    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} }
+    data: { 
+      labels: rows.map(r => {
+        let d = new Date(r.updated);
+        if(isNaN(d)) return r.updated;
+        return String(d.getDate()).padStart(2, '0') + '/' + 
+               String(d.getMonth()+1).padStart(2, '0') + ' ' + 
+               String(d.getHours()).padStart(2, '0') + ':' + 
+               String(d.getMinutes()).padStart(2, '0');
+      }), 
+      datasets: [{ 
+        data: rows.map(r=>Number(r.profit)), 
+        borderColor: '#C9A227',
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.2
+      }] 
+    },
+    options: { 
+      responsive: true, 
+      maintainAspectRatio: false, 
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#7A828C', maxTicksLimit: 5, font: {family: 'JetBrains Mono', size: 10} } },
+        y: { ticks: { color: '#7A828C', font: {family: 'JetBrains Mono', size: 10} } }
+      }
+    }
   });
 }
 
+// ฟังก์ชันเช็ค Alert พร้อมระบบจดจำลงเครื่อง (LocalStorage) รีเซ็ตเมื่อขึ้นวันใหม่
 function checkAlerts(accounts) {
+  const today = new Date().toLocaleDateString('en-CA'); // ดึงวันที่ปัจจบัน เช่น "2026-07-19"
+  let savedAlerts = JSON.parse(localStorage.getItem('ddAlertsData')) || {};
+  
+  // เช็คว่าถ้าข้ามวันแล้ว ให้ลบประวัติการเตือนทิ้ง เริ่มนับใหม่
+  if (savedAlerts.date !== today) {
+    savedAlerts = { date: today, triggered: {} };
+  }
+  
+  let hasUpdate = false;
+
   accounts.forEach(acc => {
     const dd = Number(acc.maxdd || 0);
     const id = String(acc.account);
-    if (dd > 2500 && alertedAccounts.get(id) !== 2) {
-      alertedAccounts.set(id, 2);
-      triggerAlert("🚨 CRITICAL: DD > 2500 USC", `พอร์ต #${id} ยอด DD: ${dd.toFixed(2)} USC`, true);
-    } else if (dd > 1500 && alertedAccounts.get(id) !== 1) {
-      alertedAccounts.set(id, 1);
-      triggerAlert("⚠️ WARNING: DD > 1500 USC", `พอร์ต #${id} ยอด DD: ${dd.toFixed(2)} USC`, false);
-    } else if (dd <= 1500) alertedAccounts.delete(id);
+    const currentAlertLevel = savedAlerts.triggered[id] || 0; // 0=ยังไม่เตือน, 1=เตือน 1500, 2=เตือน 2500
+
+    if (dd > 2500 && currentAlertLevel !== 2) {
+      savedAlerts.triggered[id] = 2; // จำว่าเตือนระดับ 2 ไปแล้ว
+      hasUpdate = true;
+      triggerAlert("🚨 CRITICAL: DD > 2500 USC", `พอร์ต <b class="num">#${id}</b> <br>ยอด Drawdown ปัจจุบัน: <b>${dd.toFixed(2)} USC</b>`, true);
+    } 
+    else if (dd > 1500 && dd <= 2500 && currentAlertLevel !== 1 && currentAlertLevel !== 2) {
+      savedAlerts.triggered[id] = 1; // จำว่าเตือนระดับ 1 ไปแล้ว
+      hasUpdate = true;
+      triggerAlert("⚠️ WARNING: DD > 1500 USC", `พอร์ต <b class="num">#${id}</b> <br>ยอด Drawdown ปัจจุบัน: <b>${dd.toFixed(2)} USC</b>`, false);
+    } 
+    else if (dd <= 1500 && currentAlertLevel > 0) {
+      // ถ้ายอดพอร์ตกลับมาต่ำกว่า 1500 ให้ล้างค่าความจำ เพื่อเตรียมเตือนใหม่หาก DD ขึ้นไปอีกรอบ
+      delete savedAlerts.triggered[id];
+      hasUpdate = true;
+    }
   });
+
+  // บันทึกสถานะการแจ้งเตือนลงเครื่อง
+  if (hasUpdate) {
+    localStorage.setItem('ddAlertsData', JSON.stringify(savedAlerts));
+  }
 }
 
 function triggerAlert(title, msg, double) {
-  document.querySelector('.modal-title').innerText = title;
-  document.getElementById('alertMessage').innerText = msg;
+  document.querySelector('.modal-title').innerHTML = title;
+  document.getElementById('alertMessage').innerHTML = msg;
   document.getElementById('alertModal').style.display = 'flex';
   const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-  audio.play();
-  if(double) setTimeout(()=>audio.play(), 600);
+  audio.play().catch(e=>console.log(e));
+  if(double) setTimeout(()=>audio.play().catch(e=>console.log(e)), 600);
 }
 </script>
 </body>
