@@ -139,9 +139,11 @@ async function fetchData(){
     const totalPL = data.accounts.reduce((s,a) => s + Number(a.profit||0), 0);
     const worstDD = Math.max(...data.accounts.map(a => Number(a.maxdd||0)));
     
-    document.getElementById('totalAccounts').innerText = data.accounts.length;
-    document.getElementById('totalToday').innerHTML = `<span class="${totalPL>=0?'pos':'neg'}">${totalPL>=0?'+':''}${totalPL.toFixed(2)} USC</span>`;
-    document.getElementById('totalDD').innerText = worstDD.toFixed(2) + " USC";
+        document.getElementById('totalAccounts').innerText = data.accounts.length;
+    
+    // ปรับ Total Floating เป็นสีเขียว (pos) และ Worst Max DD เป็นสีแดง (neg) เสมอ
+    document.getElementById('totalToday').innerHTML = `<span class="pos">${totalPL>=0?'+':''}${totalPL.toFixed(2)} USC</span>`;
+    document.getElementById('totalDD').innerHTML = `<span class="neg">${worstDD.toFixed(2)} USC</span>`;
 
     document.getElementById('cardsEl').innerHTML = data.accounts.map(acc => {
       const rows = data.history[acc.account] || [];
@@ -150,14 +152,16 @@ async function fetchData(){
       <div class="card">
         <h3 class="num">#${acc.account}</h3>
         <div class="metrics">
-          <div><div style="font-size:10px;color:#7A828C;">BALANCE</div><div class="num">${Number(acc.balance).toFixed(2)} USC</div></div>
-          <div><div style="font-size:10px;color:#7A828C;">MAX DD</div><div class="num">${Number(acc.maxdd).toFixed(2)} USC</div></div>
-          <div><div style="font-size:10px;color:#7A828C;">PROFIT TODAY</div><div class="num ${acc.profit>=0?'pos':'neg'}">${acc.profit>=0?'+':''}${Number(acc.profit).toFixed(2)} USC</div></div>
-          <div><div style="font-size:10px;color:#7A828C;">PROFIT WEEK</div><div class="num ${pw>=0?'pos':'neg'}">${pw>=0?'+':''}${pw.toFixed(2)} USC</div></div>
+          <!-- บังคับ BALANCE และ PROFIT เป็นสีเขียว (pos), MAX DD เป็นสีแดง (neg) -->
+          <div><div style="font-size:10px;color:#7A828C;">BALANCE</div><div class="num pos">${Number(acc.balance).toFixed(2)} USC</div></div>
+          <div><div style="font-size:10px;color:#7A828C;">MAX DD</div><div class="num neg">${Number(acc.maxdd).toFixed(2)} USC</div></div>
+          <div><div style="font-size:10px;color:#7A828C;">PROFIT TODAY</div><div class="num pos">${acc.profit>=0?'+':''}${Number(acc.profit).toFixed(2)} USC</div></div>
+          <div><div style="font-size:10px;color:#7A828C;">PROFIT WEEK</div><div class="num pos">${pw>=0?'+':''}${pw.toFixed(2)} USC</div></div>
         </div>
         <div class="detail-chart"><canvas id="chart-${acc.account}"></canvas></div>
       </div>`;
     }).join('');
+
     
     data.accounts.forEach(acc => drawChart(acc.account, data.history[acc.account] || []));
     checkAlerts(data.accounts);
