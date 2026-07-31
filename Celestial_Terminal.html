@@ -30,6 +30,12 @@
             color: var(--text-light);
             font-family: 'Inter', sans-serif;
             padding: 15px;
+
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            
         }
 
         /* --- Header & Nav Button --- */
@@ -509,6 +515,41 @@
         processMarketData(); 
         setInterval(processMarketData, 5000);
 
+        
+
+    </script>
+    <!-- ========================================== -->
+    <!-- SECURITY SCRIPT: ป้องกันคลิกขวาและปุ่มลัด -->
+    <!-- ========================================== -->
+    <script>
+        // 1. ป้องกันการคลิกขวา (Right Click)
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+        });
+
+        // 2. ป้องกันการกดปุ่มลัดบนคีย์บอร์ด
+        document.onkeydown = function(e) {
+            // บล็อก F12 (เปิดเครื่องมือ DevTools)
+            if (e.keyCode == 123) {
+                return false;
+            }
+            // บล็อก Ctrl+U (View Source)
+            if (e.ctrlKey && e.keyCode == 85) {
+                return false;
+            }
+            // บล็อก Ctrl+Shift+I / J / C (เปิดแผง Inspect Element)
+            if (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74 || e.keyCode == 67)) {
+                return false;
+            }
+            // บล็อก Ctrl+S (Save หน้าเว็บลงเครื่อง)
+            if (e.ctrlKey && e.keyCode == 83) {
+                return false;
+            }
+            // บล็อก Ctrl+P (Print หน้าเว็บ)
+            if (e.ctrlKey && e.keyCode == 80) {
+                return false;
+            }
+        };
     </script>
 </body>
 </html>
