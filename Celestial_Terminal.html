@@ -7,8 +7,6 @@
     
     <!-- นำเข้า TradingView Lightweight Charts -->
     <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
-    <!-- นำเข้า Technical Indicators -->
-    <script src="https://cdn.jsdelivr.net/npm/technicalindicators@3.1.0/dist/browser.js"></script>
     
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     
@@ -116,7 +114,6 @@
             <div class="status-dot"><span>●</span> LIVE BINANCE ENGINE</div>
         </div>
         <div>
-            <!-- ปุ่มกดกลับไปหน้า index.html -->
             <a href="index.html" class="nav-btn">📊 PORTFOLIO DASHBOARD</a>
         </div>
     </div>
@@ -226,8 +223,57 @@
     </div>
 
     <script>
-        // --- ระบบสถิติ Virtual Trading ---
-        // XAUUSD: 100 จุด = $1.00 ดังนั้น TP 500 จุด = $5.00, SL 250 จุด = $2.50
+        // --- ส่วนที่ 1: ฝังสูตรคณิตศาสตร์คำนวณ Indicator (ลื่น 100% ไม่ต้องพึ่งเน็ตโหลด Library) ---
+        function calculateRSI(closes, period = 14) {
+            if (closes.length <= period) return Array(closes.length).fill(50);
+            let rsi = new Array(closes.length).fill(0);
+            let gains = 0, losses = 0;
+            
+            for (let i = 1; i <= period; i++) {
+                let change = closes[i] - closes[i - 1];
+                if (change > 0) gains += change;
+                else losses -= change;
+            }
+            
+            let avgGain = gains / period; let avgLoss = losses / period;
+            rsi[period] = avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss));
+            
+            for (let i = period + 1; i < closes.length; i++) {
+                let change = closes[i] - closes[i - 1];
+                let gain = change > 0 ? change : 0;
+                let loss = change < 0 ? -change : 0;
+                
+                avgGain = ((avgGain * (period - 1)) + gain) / period;
+                avgLoss = ((avgLoss * (period - 1)) + loss) / period;
+                rsi[i] = avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss));
+            }
+            return rsi;
+        }
+
+        function calculateATR(highs, lows, closes, period = 14) {
+            if (closes.length <= period) return Array(closes.length).fill(0);
+            let tr = new Array(closes.length).fill(0);
+            let atr = new Array(closes.length).fill(0);
+            
+            tr[0] = highs[0] - lows[0];
+            for (let i = 1; i < closes.length; i++) {
+                let hl = highs[i] - lows[i];
+                let hc = Math.abs(highs[i] - closes[i - 1]);
+                let lc = Math.abs(lows[i] - closes[i - 1]);
+                tr[i] = Math.max(hl, hc, lc);
+            }
+            
+            let sum = 0;
+            for (let i = 1; i <= period; i++) sum += tr[i];
+            atr[period] = sum / period;
+            
+            for (let i = period + 1; i < closes.length; i++) {
+                atr[i] = ((atr[i - 1] * (period - 1)) + tr[i]) / period;
+            }
+            return atr;
+        }
+
+        // --- ส่วนที่ 2: ระบบสถิติ Virtual Trading ---
         const TP_DIST = 5.00;
         const SL_DIST = 2.50;
         
@@ -241,7 +287,6 @@
         function checkDateRollover() {
             const now = new Date();
             const todayStr = now.toLocaleDateString('th-TH');
-            // หาวันจันทร์ของสัปดาห์นี้
             const dayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1; 
             const monday = new Date(now); monday.setDate(now.getDate() - dayOfWeek);
             const weekStr = monday.toLocaleDateString('th-TH');
@@ -283,42 +328,42 @@
             let hasUpdate = false;
             
             openTrades = openTrades.filter(trade => {
-                let isClosed = false;
-                let isWin = false;
+                let isClosed = false; let isWin = false;
 
                 if (trade.type === 'BUY') {
-                    if (currentPrice >= trade.entry + TP_DIST) { isClosed = true; isWin = true; } // Hit TP
-                    else if (currentPrice <= trade.entry - SL_DIST) { isClosed = true; isWin = false; } // Hit SL
+                    if (currentPrice >= trade.entry + TP_DIST) { isClosed = true; isWin = true; } 
+                    else if (currentPrice <= trade.entry - SL_DIST) { isClosed = true; isWin = false; } 
                 } else if (trade.type === 'SELL') {
-                    if (currentPrice <= trade.entry - TP_DIST) { isClosed = true; isWin = true; } // Hit TP
-                    else if (currentPrice >= trade.entry + SL_DIST) { isClosed = true; isWin = false; } // Hit SL
+                    if (currentPrice <= trade.entry - TP_DIST) { isClosed = true; isWin = true; } 
+                    else if (currentPrice >= trade.entry + SL_DIST) { isClosed = true; isWin = false; } 
                 }
 
                 if (isClosed) {
                     if (isWin) { stats.daily.win++; stats.weekly.win++; stats.monthly.win++; }
                     else { stats.daily.loss++; stats.weekly.loss++; stats.monthly.loss++; }
-                    hasUpdate = true;
-                    return false; // เอาออกจาก Array
+                    hasUpdate = true; return false; 
                 }
-                return true; // ยังไม่ชน เก็บไว้รันต่อ
+                return true; 
             });
-
             if(hasUpdate) updateUIStats();
         }
 
         function clearStats() {
-            if(confirm("ยืนยันการล้างสถิติทั้งหมด?")) {
-                localStorage.removeItem('celestial_stats');
-                localStorage.removeItem('celestial_open_trades');
-                location.reload();
+            let pin = prompt("🔒 ADMIN ACCESS REQUIRED\nกรุณากรอกรหัสผ่าน (PIN) เพื่อล้างสถิติ:");
+            if (pin === "168168") { 
+                if(confirm("⚠️ คำเตือน: คุณแน่ใจหรือไม่ว่าจะล้างสถิติทั้งหมด?")) {
+                    localStorage.removeItem('celestial_stats');
+                    localStorage.removeItem('celestial_open_trades');
+                    location.reload();
+                }
+            } else if (pin !== null) {
+                alert("❌ ACCESS DENIED: รหัสผ่านไม่ถูกต้อง!");
             }
         }
 
-        // โหลดสถิติลงตารางครั้งแรก
         checkDateRollover(); updateUIStats();
 
-
-        // --- การตั้งค่า Chart ---
+        // --- ส่วนที่ 3: การตั้งค่า Chart ---
         const chartProperties = {
             layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#64748B' },
             grid: { vertLines: { color: 'rgba(30, 41, 59, 0.3)' }, horzLines: { color: 'rgba(30, 41, 59, 0.3)' } },
@@ -332,14 +377,15 @@
         let resLine = null; let supLine = null;
         let lastLockedSignal = "WAIT";
 
-        // --- ฟังก์ชันหลักประมวลผลกราฟ ---
+        // --- ส่วนที่ 4: ฟังก์ชันหลักประมวลผลกราฟ (ใช้ Public API กันบล็อก) ---
         const symbol = 'PAXGUSDT';
         const interval = '1m';
         const limit = 360;
 
         async function processMarketData() {
             try {
-                const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`);
+                // อัปเดตไปใช้ data-api.binance.vision (ป้องกันการบล็อกจาก ISP)
+                const res = await fetch(`https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`);
                 const data = await res.json();
                 
                 const formattedData = data.map(d => ({
@@ -353,13 +399,13 @@
                 const currentPrice = closes[closes.length - 1];
 
                 document.getElementById('livePrice').innerText = currentPrice.toFixed(2);
+                document.getElementById('livePrice').style.color = "var(--cyan)";
                 
-                // ตรวจสอบสถานะออเดอร์จำลอง (เช็ค TP/SL)
                 checkOpenTrades(currentPrice);
 
-                const TI = window.technicalindicators;
-                const rsiValues = TI.RSI.calculate({ period: 14, values: closes });
-                const atrValues = TI.ATR.calculate({ high: highs, low: lows, close: closes, period: 14 });
+                // เรียกใช้ฟังก์ชันคณิตศาสตร์ที่เขียนไว้ด้านบน
+                const rsiValues = calculateRSI(closes, 14);
+                const atrValues = calculateATR(highs, lows, closes, 14);
                 
                 const currentRsi = rsiValues[rsiValues.length - 1];
                 const currentAtr = atrValues[atrValues.length - 1];
@@ -380,10 +426,9 @@
                 resLine = candleSeries.createPriceLine({ price: resistance, color: '#ff3366', lineWidth: 1, lineStyle: 2, title: 'RES' });
                 supLine = candleSeries.createPriceLine({ price: support, color: '#00ff66', lineWidth: 1, lineStyle: 2, title: 'SUP' });
 
-                // วาด Marker อดีต
                 let markers = [];
                 for(let i = 20; i < formattedData.length; i++) {
-                    let rsiHistory = rsiValues[i - 14] || 50; 
+                    let rsiHistory = rsiValues[i] || 50; 
                     let priceHistory = formattedData[i].close;
                     if((priceHistory - support) <= 2.0 && rsiHistory < 35) {
                         markers.push({ time: formattedData[i].time, position: 'belowBar', color: '#00ff66', shape: 'arrowUp', text: 'BUY' });
@@ -393,7 +438,6 @@
                 }
                 candleSeries.setMarkers(markers);
 
-                // เงื่อนไขปัจจุบัน
                 let action = "WAIT"; let actionColor = "var(--level-gold)"; let iconText = "⏳"; let subText = "SCANNING CONFLUENCE ZONE...";
 
                 if ((currentPrice - support) <= 2.0 && currentRsi < 35) {
@@ -402,7 +446,6 @@
                     action = "SELL"; actionColor = "var(--sell-color)"; iconText = "↓"; subText = "RSI OVERBOUGHT + RESISTANCE REJECT";
                 }
 
-                // สั่ง Stamp เวลา & บันทึกสถิติเมื่อเกิด Signal ครั้งแรก
                 if (action !== "WAIT" && action !== lastLockedSignal) {
                     lastLockedSignal = action;
                     
@@ -420,11 +463,15 @@
                     document.getElementById('exec-price').innerText = currentPrice.toFixed(2);
                     document.getElementById('exec-time').innerText = thaiTime;
 
-                    // บันทึกสัญญาณลงตารางสถิติเพื่อจำลองการรัน
                     recordSignal(action, currentPrice);
                 }
 
-            } catch (error) { console.error(error); }
+            } catch (error) { 
+                console.error(error); 
+                document.getElementById('livePrice').innerText = "DATA ERROR";
+                document.getElementById('livePrice').style.color = "var(--sell-color)";
+                document.getElementById('exec-subtext').innerText = "CONNECTION FAILED OR BLOCKED BY ISP";
+            }
         }
 
         window.addEventListener('resize', () => { chart.resize(document.getElementById('tvchart').clientWidth, document.getElementById('tvchart').clientHeight); });
