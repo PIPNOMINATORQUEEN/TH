@@ -444,14 +444,26 @@
                 resLine = candleSeries.createPriceLine({ price: resistance, color: '#ff3366', lineWidth: 1, lineStyle: 2, title: 'RES' });
                 supLine = candleSeries.createPriceLine({ price: support, color: '#00ff66', lineWidth: 1, lineStyle: 2, title: 'SUP' });
 
+               // --- ระบบวาดลูกศรแบบ Anti-Spam (ไม่พ่นซ้ำ) ---
                 let markers = [];
+                let lastMarkerType = "NONE"; // จำสถานะลูกศรล่าสุดไว้
+
                 for(let i = 20; i < formattedData.length; i++) {
                     let rsiHistory = rsiValues[i] || 50; 
                     let priceHistory = formattedData[i].close;
-                    if((priceHistory - support) <= 2.0 && rsiHistory < 35) {
+                    
+                    let isBuyCondition = (priceHistory - support) <= 2.0 && rsiHistory < 35;
+                    let isSellCondition = (resistance - priceHistory) <= 2.0 && rsiHistory > 65;
+
+                    // จะยิง BUY ก็ต่อเมื่อ เข้าเงื่อนไข และ ลูกศรล่าสุดไม่ใช่ BUY (กันซ้ำ)
+                    if(isBuyCondition && lastMarkerType !== "BUY") {
                         markers.push({ time: formattedData[i].time, position: 'belowBar', color: '#00ff66', shape: 'arrowUp', text: 'BUY' });
-                    } else if((resistance - priceHistory) <= 2.0 && rsiHistory > 65) {
+                        lastMarkerType = "BUY";
+                    } 
+                    // จะยิง SELL ก็ต่อเมื่อ เข้าเงื่อนไข และ ลูกศรล่าสุดไม่ใช่ SELL (กันซ้ำ)
+                    else if(isSellCondition && lastMarkerType !== "SELL") {
                         markers.push({ time: formattedData[i].time, position: 'aboveBar', color: '#ff3366', shape: 'arrowDown', text: 'SELL' });
+                        lastMarkerType = "SELL";
                     }
                 }
                 candleSeries.setMarkers(markers);
