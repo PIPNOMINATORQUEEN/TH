@@ -10,7 +10,12 @@
 <style>
   :root{ --void:#0A0C0F; --panel:#12151A; --gold:#C9A227; --green:#3ECF8E; --red:#EF5350; --text-primary:#E7E5E0; }
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{ background:var(--void); color:var(--text-primary); font-family:'Inter',sans-serif; min-height:100vh; }
+  body{ background:var(--void); color:var(--text-primary); font-family:'Inter',sans-serif; min-height:100vh;
+       -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none; 
+      }
   .num{ font-family:'JetBrains Mono',monospace; }
   
   #alertModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; align-items: center; justify-content: center; }
@@ -289,5 +294,38 @@ function triggerAlert(title, msg, double) {
   if(double) setTimeout(()=>audio.play().catch(e=>console.log(e)), 600);
 }
 </script>
+  <!-- ========================================== -->
+    <!-- SECURITY SCRIPT: ป้องกันคลิกขวาและปุ่มลัด -->
+    <!-- ========================================== -->
+    <script>
+        // 1. ป้องกันการคลิกขวา (Right Click)
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+        });
+
+        // 2. ป้องกันการกดปุ่มลัดบนคีย์บอร์ด
+        document.onkeydown = function(e) {
+            // บล็อก F12 (เปิดเครื่องมือ DevTools)
+            if (e.keyCode == 123) {
+                return false;
+            }
+            // บล็อก Ctrl+U (View Source)
+            if (e.ctrlKey && e.keyCode == 85) {
+                return false;
+            }
+            // บล็อก Ctrl+Shift+I / J / C (เปิดแผง Inspect Element)
+            if (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74 || e.keyCode == 67)) {
+                return false;
+            }
+            // บล็อก Ctrl+S (Save หน้าเว็บลงเครื่อง)
+            if (e.ctrlKey && e.keyCode == 83) {
+                return false;
+            }
+            // บล็อก Ctrl+P (Print หน้าเว็บ)
+            if (e.ctrlKey && e.keyCode == 80) {
+                return false;
+            }
+        };
+    </script>
 </body>
 </html>
