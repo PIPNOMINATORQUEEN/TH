@@ -377,16 +377,44 @@
         let resLine = null; let supLine = null;
         let lastLockedSignal = "WAIT";
 
-        // --- ส่วนที่ 4: ฟังก์ชันหลักประมวลผลกราฟ (ใช้ Public API กันบล็อก) ---
+        // --- ส่วนที่ 4: ฟังก์ชันหลักประมวลผลกราฟ (เพิ่มระบบ Anti-Block สลับเซิร์ฟเวอร์อัตโนมัติ) ---
         const symbol = 'PAXGUSDT';
         const interval = '1m';
         const limit = 360;
 
+        const binanceEndpoints = [
+            'https://api.binance.com',
+            'https://api1.binance.com',
+            'https://api2.binance.com',
+            'https://api3.binance.com',
+            'https://api4.binance.com'
+        ];
+
+        // ฟังก์ชันดึงข้อมูลแบบสลับ Server หากโดน ISP Block
+        async function fetchWithFallback() {
+            const path = `/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+            
+            for (let baseUrl of binanceEndpoints) {
+                try {
+                    // ตั้งเวลาตัดสายทิ้ง (Timeout) หากเซิร์ฟเวอร์นั้นโดน Block (รอนานเกิน 3.5 วิ)
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 3500); 
+                    
+                    const res = await fetch(baseUrl + path, { signal: controller.signal });
+                    clearTimeout(timeoutId);
+                    
+                    if (res.ok) return await res.json();
+                } catch (e) {
+                    console.warn(`ข้าม Server: ${baseUrl} (อาจถูกบล็อกหรือล่ม)`);
+                }
+            }
+            throw new Error("ALL_SERVERS_BLOCKED");
+        }
+
         async function processMarketData() {
             try {
-                // อัปเดตไปใช้ data-api.binance.vision (ป้องกันการบล็อกจาก ISP)
-                const res = await fetch(`https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`);
-                const data = await res.json();
+                // เรียกใช้ฟังก์ชันดึงข้อมูลแบบใหม่
+                const data = await fetchWithFallback();
                 
                 const formattedData = data.map(d => ({
                     time: d[0] / 1000, open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4])
@@ -403,7 +431,6 @@
                 
                 checkOpenTrades(currentPrice);
 
-                // เรียกใช้ฟังก์ชันคณิตศาสตร์ที่เขียนไว้ด้านบน
                 const rsiValues = calculateRSI(closes, 14);
                 const atrValues = calculateATR(highs, lows, closes, 14);
                 
