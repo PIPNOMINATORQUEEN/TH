@@ -37,6 +37,37 @@
       .brand-banner .brand-text { font-size: 32px; }
       .brand-banner img { width: 100px; height: 100px; }
   }
+
+  /* --- ปุ่ม Navigation ฝั่งขวา --- */
+  .nav-btn {
+      background: rgba(0, 210, 255, 0.1);
+      color: #00d2ff;
+      border: 1px solid #00d2ff;
+      padding: 10px 18px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+      display: inline-block;
+  }
+  .nav-btn:hover {
+      background: #00d2ff;
+      color: var(--void);
+      box-shadow: 0 0 15px rgba(0, 210, 255, 0.4);
+  }
+  .right-action {
+      justify-self: end; /* ดันปุ่มไปชิดขวาสุด */
+  }
+  
+  /* ให้ปุ่มเด้งมาอยู่ตรงกลางเมื่อเปิดในมือถือ */
+  @media (max-width: 900px) {
+      .right-action { justify-self: center; margin-top: -10px; }
+  }
+  
   /* ------------------------------ */
 </style>
 </head>
@@ -67,8 +98,10 @@
       <div class="brand-text">PIP_NOMINATOR<br>QUANTUM_TH</div>
     </div>
 
-    <!-- ฝั่งขวา: ปล่อยว่างไว้ดันให้แบนเนอร์อยู่ตรงกลางจอพอดี -->
-    <div></div>
+   <!-- ฝั่งขวา: ปุ่ม Link ไปหน้ากราฟ AI -->
+    <div class="right-action">
+      <a href="Celestial_Terminal.html" class="nav-btn">🧠 AI MATRIX TERMINAL</a>
+    </div>
   </div>
 </div>
 
