@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Celestial Command - AI Matrix Terminal</title>
+    
+    <!-- นำเข้า TradingView Lightweight Charts -->
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <!-- นำเข้า Technical Indicators -->
+    <script src="https://cdn.jsdelivr.net/npm/technicalindicators@3.1.0/dist/browser.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-main: #050914; 
+            --bg-panel: #0a0f1d;
+            --text-light: #E0E7FF;
+            --text-dim: #64748B;
+            --buy-color: #00ff66; 
+            --sell-color: #ff3366; 
+            --level-gold: #ff9933;
+            --cyan: #00d2ff;
+            --border-color: #1a2642;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-light);
+            font-family: 'Inter', sans-serif;
+            padding: 15px;
+        }
+
+        /* --- Header & Nav Button --- */
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            background: var(--bg-panel); padding: 15px 25px; border-radius: 12px;
+            margin-bottom: 20px; border: 1px solid var(--border-color);
+        }
+        .brand-title { font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 700; color: var(--cyan); }
+        .status-dot { color: var(--buy-color); font-size: 11px; letter-spacing: 2px; margin-top: 5px;}
+        .status-dot span { display: inline-block; animation: blink 1.5s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        .nav-btn {
+            background: rgba(0, 210, 255, 0.1); color: var(--cyan); border: 1px solid var(--cyan);
+            padding: 10px 18px; border-radius: 8px; text-decoration: none; font-size: 12px;
+            font-weight: 700; letter-spacing: 1px; transition: all 0.3s ease; font-family: 'Space Grotesk', sans-serif;
+        }
+        .nav-btn:hover { background: var(--cyan); color: var(--bg-main); box-shadow: 0 0 15px rgba(0, 210, 255, 0.4); }
+
+        /* --- Chart Section --- */
+        .chart-container {
+            background: var(--bg-panel); border-radius: 12px; padding: 15px;
+            height: 40vh; min-height: 300px; border: 1px solid var(--border-color); position: relative;
+        }
+        .current-price-badge {
+            position: absolute; top: 25px; left: 25px; background: rgba(5, 9, 20, 0.85);
+            border: 1px solid var(--border-color); padding: 10px 20px; border-radius: 8px;
+            z-index: 10; font-family: 'JetBrains Mono', monospace; backdrop-filter: blur(4px);
+        }
+        #livePrice { font-size: 24px; font-weight: 700; color: var(--cyan); }
+        .symbol-label { font-size: 11px; color: var(--level-gold); letter-spacing: 1px; margin-bottom: 2px;}
+
+        /* --- Layout Grid ล่างกราฟ --- */
+        .bottom-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;
+        }
+        @media (max-width: 900px) { .bottom-grid { grid-template-columns: 1fr; } }
+
+        /* --- Panel ทั่วไป --- */
+        .panel { background: var(--bg-panel); border-radius: 12px; padding: 20px; border: 1px solid var(--border-color); }
+        .panel-header { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; color: var(--text-dim); letter-spacing: 2px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+
+        /* --- Execution Node --- */
+        .exec-signal-row { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; }
+        .exec-icon { width: 65px; height: 65px; border-radius: 12px; background: rgba(255, 153, 51, 0.1); border: 1px solid var(--level-gold); display: flex; align-items: center; justify-content: center; font-size: 32px; color: var(--level-gold); }
+        .exec-action-text { font-size: 38px; font-weight: 800; color: var(--level-gold); letter-spacing: 2px; line-height: 1; }
+        .exec-subtext { font-size: 11px; color: var(--text-dim); letter-spacing: 1px; margin-top: 6px; }
+        
+        .exec-details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .exec-box { background: rgba(5, 9, 20, 0.5); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; }
+        .exec-box-label { font-size: 10px; color: var(--text-dim); letter-spacing: 1px; margin-bottom: 5px; font-weight: 700;}
+        .exec-box-val { font-size: 22px; font-family: 'JetBrains Mono', monospace; font-weight: bold; color: var(--text-light); }
+        .exec-box-time { font-size: 13px; color: var(--cyan); font-family: 'JetBrains Mono', monospace;}
+
+        /* --- AI Matrix --- */
+        .ai-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .ai-card { background: rgba(5, 9, 20, 0.5); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); }
+        .ai-card-title { font-size: 10px; font-weight: 700; color: var(--text-dim); margin-bottom: 5px; letter-spacing: 1px;}
+        .ai-card-value { font-size: 20px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+        .val-buy { color: var(--buy-color); }
+        .val-sell { color: var(--sell-color); }
+        .val-neutral { color: var(--level-gold); }
+
+        /* --- STATS TABLE --- */
+        .stats-table-wrapper { margin-top: 20px; background: var(--bg-panel); border-radius: 12px; padding: 20px; border: 1px solid var(--border-color); }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-family: 'JetBrains Mono', monospace; font-size: 12px;}
+        th { color: var(--text-dim); padding: 10px; border-bottom: 1px solid var(--border-color); letter-spacing: 1px; font-weight: 700;}
+        td { padding: 12px 10px; border-bottom: 1px dotted rgba(26, 38, 66, 0.5); color: var(--text-light); }
+        .stat-win { color: var(--buy-color); font-weight: bold; }
+        .stat-loss { color: var(--sell-color); font-weight: bold; }
+        .stat-rate { color: var(--cyan); font-weight: bold; }
+        .pending-trades { font-size: 10px; color: var(--level-gold); margin-top: 10px; text-align: right; }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <div>
+            <div class="brand-title">CELESTIAL COMMAND MATRIX</div>
+            <div class="status-dot"><span>●</span> LIVE BINANCE ENGINE</div>
+        </div>
+        <div>
+            <!-- ปุ่มกดกลับไปหน้า index.html -->
+            <a href="index.html" class="nav-btn">📊 PORTFOLIO DASHBOARD</a>
+        </div>
+    </div>
+
+    <!-- Chart Section -->
+    <div class="chart-container">
+        <div class="current-price-badge">
+            <div class="symbol-label">GOLD (PAXG/USDT) M1</div>
+            <div id="livePrice">Loading...</div>
+        </div>
+        <div id="tvchart" style="width: 100%; height: 100%;"></div>
+    </div>
+
+    <div class="bottom-grid">
+        <!-- EXECUTION NODE -->
+        <div class="panel">
+            <div class="panel-header">
+                <span>EXECUTION NODE</span>
+                <span style="color: var(--cyan);">XAUUSDT_x / M1</span>
+            </div>
+            <div class="exec-signal-row">
+                <div class="exec-icon" id="exec-icon">⏳</div>
+                <div>
+                    <div class="exec-action-text" id="exec-action">WAITING</div>
+                    <div class="exec-subtext" id="exec-subtext">SCANNING CONFLUENCE ZONE...</div>
+                </div>
+            </div>
+            <div class="exec-details-grid">
+                <div class="exec-box">
+                    <div class="exec-box-label">ENTRY QUOTE</div>
+                    <div class="exec-box-val" id="exec-price">0.00</div>
+                </div>
+                <div class="exec-box">
+                    <div class="exec-box-label">STAMP TIME (TH)</div>
+                    <div class="exec-box-time" id="exec-time">--/--/---- --:--:--</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI DECISION MATRIX -->
+        <div class="panel">
+            <div class="panel-header">
+                <span>STRATEGY DYNAMICS & VOLATILITY</span>
+            </div>
+            <div class="ai-grid">
+                <div class="ai-card">
+                    <div class="ai-card-title">RSI (14)</div>
+                    <div class="ai-card-value" id="val-rsi">--</div>
+                </div>
+                <div class="ai-card">
+                    <div class="ai-card-title">M1 ATR (14)</div>
+                    <div class="ai-card-value" id="val-atr" style="color: var(--cyan);">--</div>
+                </div>
+                <div class="ai-card">
+                    <div class="ai-card-title">RESISTANCE (R1)</div>
+                    <div class="ai-card-value val-sell" id="val-res">--</div>
+                </div>
+                <div class="ai-card">
+                    <div class="ai-card-title">SUPPORT (S1)</div>
+                    <div class="ai-card-value val-buy" id="val-sup">--</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PERFORMANCE STATISTICS -->
+    <div class="stats-table-wrapper">
+        <div class="panel-header">
+            <span>PERFORMANCE STATISTICS (TP 500 pts / SL 250 pts)</span>
+            <button onclick="clearStats()" style="background:none; border:1px solid #ff3366; color:#ff3366; padding:2px 8px; border-radius:4px; cursor:pointer; font-size:10px;">RESET</button>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>PERIOD</th>
+                    <th>SIGNALS</th>
+                    <th>WINS (TP)</th>
+                    <th>LOSSES (SL)</th>
+                    <th>WIN RATE</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="color: var(--cyan);">TODAY</td>
+                    <td id="st-d-sig">0</td>
+                    <td id="st-d-win" class="stat-win">0</td>
+                    <td id="st-d-los" class="stat-loss">0</td>
+                    <td id="st-d-rat" class="stat-rate">0%</td>
+                </tr>
+                <tr>
+                    <td style="color: var(--cyan);">THIS WEEK</td>
+                    <td id="st-w-sig">0</td>
+                    <td id="st-w-win" class="stat-win">0</td>
+                    <td id="st-w-los" class="stat-loss">0</td>
+                    <td id="st-w-rat" class="stat-rate">0%</td>
+                </tr>
+                <tr>
+                    <td style="color: var(--cyan);">THIS MONTH</td>
+                    <td id="st-m-sig">0</td>
+                    <td id="st-m-win" class="stat-win">0</td>
+                    <td id="st-m-los" class="stat-loss">0</td>
+                    <td id="st-m-rat" class="stat-rate">0%</td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="pending-trades" id="pending-trades-count">0 VIRTUAL TRADES RUNNING IN BACKGROUND...</div>
+    </div>
+
+    <script>
+        // --- ระบบสถิติ Virtual Trading ---
+        // XAUUSD: 100 จุด = $1.00 ดังนั้น TP 500 จุด = $5.00, SL 250 จุด = $2.50
+        const TP_DIST = 5.00;
+        const SL_DIST = 2.50;
+        
+        let stats = JSON.parse(localStorage.getItem('celestial_stats')) || {
+            daily: { sig: 0, win: 0, loss: 0, date: '' },
+            weekly: { sig: 0, win: 0, loss: 0, date: '' },
+            monthly: { sig: 0, win: 0, loss: 0, date: '' }
+        };
+        let openTrades = JSON.parse(localStorage.getItem('celestial_open_trades')) || [];
+
+        function checkDateRollover() {
+            const now = new Date();
+            const todayStr = now.toLocaleDateString('th-TH');
+            // หาวันจันทร์ของสัปดาห์นี้
+            const dayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1; 
+            const monday = new Date(now); monday.setDate(now.getDate() - dayOfWeek);
+            const weekStr = monday.toLocaleDateString('th-TH');
+            const monthStr = now.getMonth() + '-' + now.getFullYear();
+
+            if (stats.daily.date !== todayStr) { stats.daily = { sig: 0, win: 0, loss: 0, date: todayStr }; }
+            if (stats.weekly.date !== weekStr) { stats.weekly = { sig: 0, win: 0, loss: 0, date: weekStr }; }
+            if (stats.monthly.date !== monthStr) { stats.monthly = { sig: 0, win: 0, loss: 0, date: monthStr }; }
+        }
+
+        function updateUIStats() {
+            const periods = ['daily', 'weekly', 'monthly'];
+            const prefixes = ['d', 'w', 'm'];
+            
+            for(let i=0; i<3; i++) {
+                let p = periods[i]; let pfx = prefixes[i];
+                let totalCompleted = stats[p].win + stats[p].loss;
+                let winRate = totalCompleted > 0 ? ((stats[p].win / totalCompleted) * 100).toFixed(1) : 0;
+                
+                document.getElementById(`st-${pfx}-sig`).innerText = stats[p].sig;
+                document.getElementById(`st-${pfx}-win`).innerText = stats[p].win;
+                document.getElementById(`st-${pfx}-los`).innerText = stats[p].loss;
+                document.getElementById(`st-${pfx}-rat`).innerText = winRate + '%';
+            }
+            document.getElementById('pending-trades-count').innerText = `${openTrades.length} VIRTUAL TRADES RUNNING IN BACKGROUND...`;
+            localStorage.setItem('celestial_stats', JSON.stringify(stats));
+            localStorage.setItem('celestial_open_trades', JSON.stringify(openTrades));
+        }
+
+        function recordSignal(type, price) {
+            checkDateRollover();
+            stats.daily.sig++; stats.weekly.sig++; stats.monthly.sig++;
+            openTrades.push({ type: type, entry: price });
+            updateUIStats();
+        }
+
+        function checkOpenTrades(currentPrice) {
+            checkDateRollover();
+            let hasUpdate = false;
+            
+            openTrades = openTrades.filter(trade => {
+                let isClosed = false;
+                let isWin = false;
+
+                if (trade.type === 'BUY') {
+                    if (currentPrice >= trade.entry + TP_DIST) { isClosed = true; isWin = true; } // Hit TP
+                    else if (currentPrice <= trade.entry - SL_DIST) { isClosed = true; isWin = false; } // Hit SL
+                } else if (trade.type === 'SELL') {
+                    if (currentPrice <= trade.entry - TP_DIST) { isClosed = true; isWin = true; } // Hit TP
+                    else if (currentPrice >= trade.entry + SL_DIST) { isClosed = true; isWin = false; } // Hit SL
+                }
+
+                if (isClosed) {
+                    if (isWin) { stats.daily.win++; stats.weekly.win++; stats.monthly.win++; }
+                    else { stats.daily.loss++; stats.weekly.loss++; stats.monthly.loss++; }
+                    hasUpdate = true;
+                    return false; // เอาออกจาก Array
+                }
+                return true; // ยังไม่ชน เก็บไว้รันต่อ
+            });
+
+            if(hasUpdate) updateUIStats();
+        }
+
+        function clearStats() {
+            if(confirm("ยืนยันการล้างสถิติทั้งหมด?")) {
+                localStorage.removeItem('celestial_stats');
+                localStorage.removeItem('celestial_open_trades');
+                location.reload();
+            }
+        }
+
+        // โหลดสถิติลงตารางครั้งแรก
+        checkDateRollover(); updateUIStats();
+
+
+        // --- การตั้งค่า Chart ---
+        const chartProperties = {
+            layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#64748B' },
+            grid: { vertLines: { color: 'rgba(30, 41, 59, 0.3)' }, horzLines: { color: 'rgba(30, 41, 59, 0.3)' } },
+            timeScale: { timeVisible: true }
+        };
+        const chart = LightweightCharts.createChart(document.getElementById('tvchart'), chartProperties);
+        const candleSeries = chart.addCandlestickSeries({
+            upColor: '#00ff66', downColor: '#ff3366', borderVisible: false, wickUpColor: '#00ff66', wickDownColor: '#ff3366'
+        });
+
+        let resLine = null; let supLine = null;
+        let lastLockedSignal = "WAIT";
+
+        // --- ฟังก์ชันหลักประมวลผลกราฟ ---
+        const symbol = 'PAXGUSDT';
+        const interval = '1m';
+        const limit = 360;
+
+        async function processMarketData() {
+            try {
+                const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`);
+                const data = await res.json();
+                
+                const formattedData = data.map(d => ({
+                    time: d[0] / 1000, open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4])
+                }));
+                candleSeries.setData(formattedData);
+
+                const closes = formattedData.map(d => d.close);
+                const highs = formattedData.map(d => d.high);
+                const lows = formattedData.map(d => d.low);
+                const currentPrice = closes[closes.length - 1];
+
+                document.getElementById('livePrice').innerText = currentPrice.toFixed(2);
+                
+                // ตรวจสอบสถานะออเดอร์จำลอง (เช็ค TP/SL)
+                checkOpenTrades(currentPrice);
+
+                const TI = window.technicalindicators;
+                const rsiValues = TI.RSI.calculate({ period: 14, values: closes });
+                const atrValues = TI.ATR.calculate({ high: highs, low: lows, close: closes, period: 14 });
+                
+                const currentRsi = rsiValues[rsiValues.length - 1];
+                const currentAtr = atrValues[atrValues.length - 1];
+
+                const recentHighs = highs.slice(-60);
+                const recentLows = lows.slice(-60);
+                const resistance = Math.max(...recentHighs);
+                const support = Math.min(...recentLows);
+
+                document.getElementById('val-rsi').innerText = currentRsi.toFixed(2);
+                document.getElementById('val-rsi').className = "ai-card-value " + (currentRsi > 65 ? "val-sell" : currentRsi < 35 ? "val-buy" : "val-neutral");
+                document.getElementById('val-atr').innerText = currentAtr.toFixed(2);
+                document.getElementById('val-res').innerText = resistance.toFixed(2);
+                document.getElementById('val-sup').innerText = support.toFixed(2);
+
+                if(resLine) candleSeries.removePriceLine(resLine);
+                if(supLine) candleSeries.removePriceLine(supLine);
+                resLine = candleSeries.createPriceLine({ price: resistance, color: '#ff3366', lineWidth: 1, lineStyle: 2, title: 'RES' });
+                supLine = candleSeries.createPriceLine({ price: support, color: '#00ff66', lineWidth: 1, lineStyle: 2, title: 'SUP' });
+
+                // วาด Marker อดีต
+                let markers = [];
+                for(let i = 20; i < formattedData.length; i++) {
+                    let rsiHistory = rsiValues[i - 14] || 50; 
+                    let priceHistory = formattedData[i].close;
+                    if((priceHistory - support) <= 2.0 && rsiHistory < 35) {
+                        markers.push({ time: formattedData[i].time, position: 'belowBar', color: '#00ff66', shape: 'arrowUp', text: 'BUY' });
+                    } else if((resistance - priceHistory) <= 2.0 && rsiHistory > 65) {
+                        markers.push({ time: formattedData[i].time, position: 'aboveBar', color: '#ff3366', shape: 'arrowDown', text: 'SELL' });
+                    }
+                }
+                candleSeries.setMarkers(markers);
+
+                // เงื่อนไขปัจจุบัน
+                let action = "WAIT"; let actionColor = "var(--level-gold)"; let iconText = "⏳"; let subText = "SCANNING CONFLUENCE ZONE...";
+
+                if ((currentPrice - support) <= 2.0 && currentRsi < 35) {
+                    action = "BUY"; actionColor = "var(--buy-color)"; iconText = "↑"; subText = "RSI OVERSOLD + SUPPORT BOUNCE";
+                } else if ((resistance - currentPrice) <= 2.0 && currentRsi > 65) {
+                    action = "SELL"; actionColor = "var(--sell-color)"; iconText = "↓"; subText = "RSI OVERBOUGHT + RESISTANCE REJECT";
+                }
+
+                // สั่ง Stamp เวลา & บันทึกสถิติเมื่อเกิด Signal ครั้งแรก
+                if (action !== "WAIT" && action !== lastLockedSignal) {
+                    lastLockedSignal = action;
+                    
+                    const now = new Date();
+                    const thaiTime = now.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+                    document.getElementById('exec-action').innerText = action;
+                    document.getElementById('exec-action').style.color = actionColor;
+                    
+                    const iconEl = document.getElementById('exec-icon');
+                    iconEl.innerText = iconText; iconEl.style.color = actionColor; iconEl.style.borderColor = actionColor;
+                    iconEl.style.background = action === "BUY" ? "rgba(0, 255, 102, 0.1)" : "rgba(255, 51, 102, 0.1)";
+
+                    document.getElementById('exec-subtext').innerText = subText;
+                    document.getElementById('exec-price').innerText = currentPrice.toFixed(2);
+                    document.getElementById('exec-time').innerText = thaiTime;
+
+                    // บันทึกสัญญาณลงตารางสถิติเพื่อจำลองการรัน
+                    recordSignal(action, currentPrice);
+                }
+
+            } catch (error) { console.error(error); }
+        }
+
+        window.addEventListener('resize', () => { chart.resize(document.getElementById('tvchart').clientWidth, document.getElementById('tvchart').clientHeight); });
+        
+        processMarketData(); setInterval(processMarketData, 5000);
+
+    </script>
+</body>
+</html>
