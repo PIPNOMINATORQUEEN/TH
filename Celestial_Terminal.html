@@ -363,44 +363,58 @@
         let resLine = null; let supLine = null;
         let lastLockedSignal = "WAIT";
 
-        // --- ดึงข้อมูล XAUUSD (Spot Gold) จากตลาดโลกของจริง (ผ่าน Proxy ป้องกันการบล็อก) ---
+        // --- ดึงข้อมูล XAUUSD ด้วยระบบท่อคู่ (Multi-Proxy Fallback) ป้องกันโดนแบน IP ---
         async function fetchRealForexGold() {
-            // ดึงราคาจาก Yahoo Finance (XAUUSD=X) ซึ่งอิงตามตลาดโลก (จันทร์-ศุกร์)
+            // ใช้ range=5d เพื่อครอบคลุมเสาร์-อาทิตย์ และพ่วง Date.now() เพื่อแก้ปัญหา Cache
             const yfUrl = "https://query1.finance.yahoo.com/v8/finance/chart/XAUUSD=X?range=5d&interval=1m&_=" + Date.now();
-            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yfUrl)}`;
             
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 8000); 
+            // เตรียมท่อ Proxy 3 แบบ เพื่อสลับกันอัตโนมัติเมื่ออันใดอันนึงโดนบล็อก
+            const proxies = [
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(yfUrl)}`,
+                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(yfUrl)}`,
+                `https://corsproxy.io/?${encodeURIComponent(yfUrl)}`
+            ];
             
-            try {
-                const res = await fetch(proxyUrl, { signal: controller.signal });
-                clearTimeout(timeoutId);
-                const data = await res.json();
-                
-                const result = data.chart.result[0];
-                const timestamps = result.timestamp;
-                const quotes = result.indicators.quote[0];
-                
-                let formatted = [];
-                let lastT = 0;
-                for (let i = 0; i < timestamps.length; i++) {
-                    // กรองข้อมูลที่สมบูรณ์และเรียงลำดับเวลาถูกต้อง
-                    if (quotes.close[i] !== null && quotes.open[i] !== null && timestamps[i] > lastT) {
-                        formatted.push({
-                            time: timestamps[i],
-                            open: quotes.open[i],
-                            high: quotes.high[i],
-                            low: quotes.low[i],
-                            close: quotes.close[i]
-                        });
-                        lastT = timestamps[i];
+            let lastErr = null;
+            
+            // ลูปทำงาน: ถ้าท่อแรกพัง จะเปลี่ยนไปท่อสอง ท่อสาม ทันที
+            for (let proxyUrl of proxies) {
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 6000); 
+                    
+                    const res = await fetch(proxyUrl, { signal: controller.signal });
+                    clearTimeout(timeoutId);
+                    
+                    // ถ้ายิงไม่ผ่าน หรือโดน Rate limit ให้ข้ามไปลอง Proxy ตัวถัดไป
+                    if (!res.ok) continue; 
+                    
+                    const data = await res.json();
+                    
+                    // ตรวจสอบว่า Yahoo ส่งข้อมูลที่สมบูรณ์มาให้หรือไม่
+                    if (!data.chart || !data.chart.result || !data.chart.result[0]) continue;
+                    
+                    const result = data.chart.result[0];
+                    const timestamps = result.timestamp;
+                    const quotes = result.indicators.quote[0];
+                    
+                    let formatted = [];
+                    let lastT = 0;
+                    for (let i = 0; i < timestamps.length; i++) {
+                        if (quotes.close[i] !== null && quotes.open[i] !== null && timestamps[i] > lastT) {
+                            formatted.push({
+                                time: timestamps[i], open: quotes.open[i], high: quotes.high[i], low: quotes.low[i], close: quotes.close[i]
+                            });
+                            lastT = timestamps[i];
+                        }
                     }
+                    return formatted; // ได้ข้อมูลครบปุ๊บ คืนค่าให้กราฟทันที
+                } catch (err) {
+                    lastErr = err;
+                    continue; // ถ้า Error ติด Timeout ให้ลอง Proxy ตัวถัดไป
                 }
-                return formatted;
-            } catch (err) {
-                clearTimeout(timeoutId);
-                throw err;
             }
+            throw new Error("All proxies failed.");
         }
 
         async function processMarketData() {
@@ -416,7 +430,6 @@
                 const currentPrice = closes[closes.length - 1];
                 const lastTimestamp = formattedData[formattedData.length - 1].time;
 
-                // เช็คว่าตลาดปิดอยู่หรือไม่ (วันเสาร์-อาทิตย์) ถ้าราคาไม่ขยับเกิน 2 ชั่วโมง = ปิด
                 const nowSec = Math.floor(Date.now() / 1000);
                 if (nowSec - lastTimestamp > 7200) {
                     document.getElementById('market-status').innerHTML = '<span style="color:var(--sell-color)">●</span> MARKET CLOSED (WEEKEND)';
@@ -453,7 +466,6 @@
                 resLine = candleSeries.createPriceLine({ price: resistance, color: '#ff3366', lineWidth: 1, lineStyle: 2, title: 'RES' });
                 supLine = candleSeries.createPriceLine({ price: support, color: '#00ff66', lineWidth: 1, lineStyle: 2, title: 'SUP' });
 
-                // --- วาดลูกศรแบบ Anti-Spam ---
                 let markers = [];
                 let lastMarkerType = "NONE"; 
                 for(let i = 20; i < formattedData.length; i++) {
@@ -503,18 +515,21 @@
                 }
 
             } catch (error) { 
-                console.error(error); 
-                document.getElementById('livePrice').innerText = "CONNECT ERROR";
-                document.getElementById('livePrice').style.color = "var(--sell-color)";
-                document.getElementById('exec-subtext').innerText = "RETRAYING DATA FROM MARKET...";
+                console.error("Fetch Data Issue:", error); 
+                // Soft-Fail: จะขึ้นแจ้งเตือนสีแดง ก็ต่อเมื่อไม่มีข้อมูลกราฟแสดงอยู่เลยเท่านั้น
+                if (document.getElementById('livePrice').innerText === "Loading..." || document.getElementById('livePrice').innerText === "CONNECT ERROR") {
+                    document.getElementById('livePrice').innerText = "CONNECT ERROR";
+                    document.getElementById('livePrice').style.color = "var(--sell-color)";
+                }
+                document.getElementById('exec-subtext').innerText = "RETRYING DATA FROM MARKET...";
             }
         }
 
         window.addEventListener('resize', () => { chart.resize(document.getElementById('tvchart').clientWidth, document.getElementById('tvchart').clientHeight); });
         
-        // อัปเดตข้อมูลทุกๆ 10 วินาที เพื่อไม่ให้เซิร์ฟเวอร์เพ่งเล็งว่าเราสแปมข้อมูล
+        // ขยายเวลาดีเลย์เป็น 15 วินาที เพื่อทะนุถนอมเซิร์ฟเวอร์ Proxy ป้องกันการโดนแบน IP
         processMarketData(); 
-        setInterval(processMarketData, 10000); 
+        setInterval(processMarketData, 15000); 
 
     </script>
 
