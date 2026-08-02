@@ -366,7 +366,7 @@
         // --- ดึงข้อมูล XAUUSD (Spot Gold) จากตลาดโลกของจริง (ผ่าน Proxy ป้องกันการบล็อก) ---
         async function fetchRealForexGold() {
             // ดึงราคาจาก Yahoo Finance (XAUUSD=X) ซึ่งอิงตามตลาดโลก (จันทร์-ศุกร์)
-            const yfUrl = "https://query1.finance.yahoo.com/v8/finance/chart/XAUUSD=X?range=2d&interval=1m&_=" + Date.now();
+            const yfUrl = "https://query1.finance.yahoo.com/v8/finance/chart/XAUUSD=X?range=5d&interval=1m&_=" + Date.now();
             const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yfUrl)}`;
             
             const controller = new AbortController();
