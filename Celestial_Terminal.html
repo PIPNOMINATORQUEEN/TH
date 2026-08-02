@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Celestial Command - AI Matrix Terminal</title>
     
-    <!-- ล็อกเวอร์ชัน TradingView Lightweight Charts เป็น @4.1.1 เพื่อป้องกัน Error -->
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
-    
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     
     <style>
@@ -21,17 +19,15 @@
             --level-gold: #ff9933;
             --cyan: #00d2ff;
             --border-color: #1a2642;
+            --fvg-color: #8b5cf6;
         }
 
-        /* --- Anti-Copy (ป้องกันการคลุมดำก๊อปปี้ข้อความ) --- */
         body {
             -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;
             background-color: var(--bg-main); color: var(--text-light); font-family: 'Inter', sans-serif; padding: 15px;
         }
-
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
-        /* --- Header & Nav Button --- */
         .header {
             display: flex; justify-content: space-between; align-items: center;
             background: var(--bg-panel); padding: 15px 25px; border-radius: 12px;
@@ -49,7 +45,6 @@
         }
         .nav-btn:hover { background: var(--cyan); color: var(--bg-main); box-shadow: 0 0 15px rgba(0, 210, 255, 0.4); }
 
-        /* --- Chart Section --- */
         .chart-container {
             background: var(--bg-panel); border-radius: 12px; padding: 15px;
             height: 40vh; min-height: 300px; border: 1px solid var(--border-color); position: relative;
@@ -62,15 +57,12 @@
         #livePrice { font-size: 24px; font-weight: 700; color: var(--cyan); }
         .symbol-label { font-size: 11px; color: var(--level-gold); letter-spacing: 1px; margin-bottom: 2px;}
 
-        /* --- Layout Grid ล่างกราฟ --- */
         .bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
         @media (max-width: 900px) { .bottom-grid { grid-template-columns: 1fr; } }
 
-        /* --- Panel ทั่วไป --- */
         .panel { background: var(--bg-panel); border-radius: 12px; padding: 20px; border: 1px solid var(--border-color); }
         .panel-header { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; color: var(--text-dim); letter-spacing: 2px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
 
-        /* --- Execution Node --- */
         .exec-signal-row { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; }
         .exec-icon { width: 65px; height: 65px; border-radius: 12px; background: rgba(255, 153, 51, 0.1); border: 1px solid var(--level-gold); display: flex; align-items: center; justify-content: center; font-size: 32px; color: var(--level-gold); }
         .exec-action-text { font-size: 38px; font-weight: 800; color: var(--level-gold); letter-spacing: 2px; line-height: 1; }
@@ -82,7 +74,6 @@
         .exec-box-val { font-size: 22px; font-family: 'JetBrains Mono', monospace; font-weight: bold; color: var(--text-light); }
         .exec-box-time { font-size: 13px; color: var(--cyan); font-family: 'JetBrains Mono', monospace;}
 
-        /* --- AI Matrix --- */
         .ai-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .ai-card { background: rgba(5, 9, 20, 0.5); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); }
         .ai-card-title { font-size: 10px; font-weight: 700; color: var(--text-dim); margin-bottom: 5px; letter-spacing: 1px;}
@@ -91,7 +82,6 @@
         .val-sell { color: var(--sell-color); }
         .val-neutral { color: var(--level-gold); }
 
-        /* --- STATS TABLE --- */
         .stats-table-wrapper { margin-top: 20px; background: var(--bg-panel); border-radius: 12px; padding: 20px; border: 1px solid var(--border-color); }
         table { width: 100%; border-collapse: collapse; text-align: left; font-family: 'JetBrains Mono', monospace; font-size: 12px;}
         th { color: var(--text-dim); padding: 10px; border-bottom: 1px solid var(--border-color); letter-spacing: 1px; font-weight: 700;}
@@ -104,7 +94,6 @@
 </head>
 <body>
 
-    <!-- Header -->
     <div class="header">
         <div>
             <div class="brand-title">CELESTIAL COMMAND MATRIX</div>
@@ -115,7 +104,6 @@
         </div>
     </div>
 
-    <!-- Chart Section -->
     <div class="chart-container">
         <div class="current-price-badge">
             <div class="symbol-label" id="symbol-display">GOLD (XAU/USD) M1 FOREX</div>
@@ -125,7 +113,6 @@
     </div>
 
     <div class="bottom-grid">
-        <!-- EXECUTION NODE -->
         <div class="panel">
             <div class="panel-header">
                 <span>EXECUTION NODE</span>
@@ -150,33 +137,31 @@
             </div>
         </div>
 
-        <!-- AI DECISION MATRIX -->
         <div class="panel">
             <div class="panel-header">
-                <span>STRATEGY DYNAMICS & VOLATILITY</span>
+                <span>STRATEGY DYNAMICS & FVG ZONE</span>
             </div>
             <div class="ai-grid">
+                <div class="ai-card">
+                    <div class="ai-card-title">RSI DIVERGENCE</div>
+                    <div class="ai-card-value" id="val-div">NONE</div>
+                </div>
                 <div class="ai-card">
                     <div class="ai-card-title">RSI (14)</div>
                     <div class="ai-card-value" id="val-rsi">--</div>
                 </div>
                 <div class="ai-card">
-                    <div class="ai-card-title">M1 ATR (14)</div>
-                    <div class="ai-card-value" id="val-atr" style="color: var(--cyan);">--</div>
+                    <div class="ai-card-title">FVG 50% LEVEL</div>
+                    <div class="ai-card-value" id="val-fvg" style="color: var(--fvg-color);">--</div>
                 </div>
                 <div class="ai-card">
-                    <div class="ai-card-title">RESISTANCE (R1)</div>
-                    <div class="ai-card-value val-sell" id="val-res">--</div>
-                </div>
-                <div class="ai-card">
-                    <div class="ai-card-title">SUPPORT (S1)</div>
-                    <div class="ai-card-value val-buy" id="val-sup">--</div>
+                    <div class="ai-card-title">FVG TYPE</div>
+                    <div class="ai-card-value" id="val-fvg-type">--</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- PERFORMANCE STATISTICS -->
     <div class="stats-table-wrapper">
         <div class="panel-header">
             <span>PERFORMANCE STATISTICS (TP 500 pts / SL 250 pts)</span>
@@ -220,54 +205,105 @@
     </div>
 
     <script>
+        // --- 1. ฟังก์ชันเช็คเวลา Kill Zone ---
+        function checkKillZone(timestampMs) {
+            const d = new Date(timestampMs);
+            const h = d.getHours();
+            const m = d.getMinutes();
+            const t = h + (m / 60.0);
+            
+            if (t >= 7.0 && t <= 10.0) return "ASIAN KILL ZONE";
+            if (t >= 14.0 && t <= 17.0) return "LONDON KILL ZONE";
+            if (t >= 19.0 && t <= 22.0) return "NEW YORK KILL ZONE";
+            return false; 
+        }
+
+        // --- 2. อัลกอริทึมค้นหา FVG (Fair Value Gap) แบบเรียลไทม์ ---
+        function findLatestFVG(data) {
+            for (let i = data.length - 2; i >= 2; i--) {
+                let c1 = data[i-2]; let c2 = data[i-1]; let c3 = data[i];
+
+                if (c1.high < c3.low && c2.close > c2.open) { 
+                    let gapTop = c3.low; let gapBottom = c1.high;
+                    let mid = (gapTop + gapBottom) / 2; 
+                    
+                    let filled = false;
+                    for(let j = i+1; j < data.length; j++) {
+                        if (data[j].low <= gapBottom) { filled = true; break; }
+                    }
+                    if (!filled) return { type: 'BULLISH', top: gapTop, bottom: gapBottom, mid: mid };
+                }
+
+                if (c1.low > c3.high && c2.close < c2.open) { 
+                    let gapTop = c1.low; let gapBottom = c3.high;
+                    let mid = (gapTop + gapBottom) / 2; 
+                    
+                    let filled = false;
+                    for(let j = i+1; j < data.length; j++) {
+                        if (data[j].high >= gapTop) { filled = true; break; }
+                    }
+                    if (!filled) return { type: 'BEARISH', top: gapTop, bottom: gapBottom, mid: mid };
+                }
+            }
+            return null; 
+        }
+
+        // --- 3. อัลกอริทึมตรวจจับ RSI Divergence ---
+        function checkDivergence(closes, rsis, lookback = 30) {
+            if (closes.length < lookback * 2) return "NONE";
+            
+            let recentCloses = closes.slice(-lookback);
+            let recentRsis = rsis.slice(-lookback);
+            let recentMaxPrice = Math.max(...recentCloses);
+            let recentMaxIdx = recentCloses.lastIndexOf(recentMaxPrice);
+            let recentMaxRsi = recentRsis[recentMaxIdx];
+
+            let recentMinPrice = Math.min(...recentCloses);
+            let recentMinIdx = recentCloses.lastIndexOf(recentMinPrice);
+            let recentMinRsi = recentRsis[recentMinIdx];
+
+            let prevCloses = closes.slice(-lookback * 2, -lookback);
+            let prevRsis = rsis.slice(-lookback * 2, -lookback);
+            let prevMaxPrice = Math.max(...prevCloses);
+            let prevMaxIdx = prevCloses.lastIndexOf(prevMaxPrice);
+            let prevMaxRsi = prevRsis[prevMaxIdx];
+
+            let prevMinPrice = Math.min(...prevCloses);
+            let prevMinIdx = prevCloses.lastIndexOf(prevMinPrice);
+            let prevMinRsi = prevRsis[prevMinIdx];
+
+            // Bearish Divergence: ราคาสูงขึ้น แต่ RSI ต่ำลง (เตือนว่าหมดแรงซื้อ)
+            if (recentMaxPrice > prevMaxPrice && recentMaxRsi < prevMaxRsi && recentMaxRsi > 50) {
+                return "BEARISH DIV";
+            }
+            // Bullish Divergence: ราคาต่ำลง แต่ RSI สูงขึ้น (เตือนว่าหมดแรงขาย)
+            if (recentMinPrice < prevMinPrice && recentMinRsi > prevMinRsi && recentMinRsi < 50) {
+                return "BULLISH DIV";
+            }
+            return "NONE";
+        }
+
         // --- ระบบสถิติ และคำนวณ Indicator ---
         function calculateRSI(closes, period = 14) {
             if (closes.length <= period) return Array(closes.length).fill(50);
             let rsi = new Array(closes.length).fill(0);
             let gains = 0, losses = 0;
-            
             for (let i = 1; i <= period; i++) {
                 let change = closes[i] - closes[i - 1];
                 if (change > 0) gains += change;
                 else losses -= change;
             }
-            
             let avgGain = gains / period; let avgLoss = losses / period;
             rsi[period] = avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss));
-            
             for (let i = period + 1; i < closes.length; i++) {
                 let change = closes[i] - closes[i - 1];
                 let gain = change > 0 ? change : 0;
                 let loss = change < 0 ? -change : 0;
-                
                 avgGain = ((avgGain * (period - 1)) + gain) / period;
                 avgLoss = ((avgLoss * (period - 1)) + loss) / period;
                 rsi[i] = avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss));
             }
             return rsi;
-        }
-
-        function calculateATR(highs, lows, closes, period = 14) {
-            if (closes.length <= period) return Array(closes.length).fill(0);
-            let tr = new Array(closes.length).fill(0);
-            let atr = new Array(closes.length).fill(0);
-            
-            tr[0] = highs[0] - lows[0];
-            for (let i = 1; i < closes.length; i++) {
-                let hl = highs[i] - lows[i];
-                let hc = Math.abs(highs[i] - closes[i - 1]);
-                let lc = Math.abs(lows[i] - closes[i - 1]);
-                tr[i] = Math.max(hl, hc, lc);
-            }
-            
-            let sum = 0;
-            for (let i = 1; i <= period; i++) sum += tr[i];
-            atr[period] = sum / period;
-            
-            for (let i = period + 1; i < closes.length; i++) {
-                atr[i] = ((atr[i - 1] * (period - 1)) + tr[i]) / period;
-            }
-            return atr;
         }
 
         const TP_DIST = 5.00; 
@@ -291,7 +327,6 @@
         function updateUIStats() {
             const periods = ['daily', 'weekly', 'monthly'];
             const prefixes = ['d', 'w', 'm'];
-            
             for(let i=0; i<3; i++) {
                 let p = periods[i]; let pfx = prefixes[i];
                 let totalCompleted = stats[p].win + stats[p].loss;
@@ -349,7 +384,6 @@
 
         checkDateRollover(); updateUIStats();
 
-        // --- ตั้งค่ากราฟ ---
         const chartProperties = {
             layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#64748B' },
             grid: { vertLines: { color: 'rgba(30, 41, 59, 0.3)' }, horzLines: { color: 'rgba(30, 41, 59, 0.3)' } },
@@ -360,14 +394,12 @@
             upColor: '#00ff66', downColor: '#ff3366', borderVisible: false, wickUpColor: '#00ff66', wickDownColor: '#ff3366'
         });
 
-        let resLine = null; let supLine = null;
+        let fvgTopLine = null; let fvgBotLine = null; let fvgMidLine = null;
         let lastLockedSignal = "WAIT";
 
-        // --- 1. ดึงข้อมูล XAUUSD (Forex) แบบลดการโหลด ป้องกันการตัดสาย ---
+        // --- ดึงข้อมูล XAUUSD ---
         async function fetchRealForexGold() {
-            // แก้ไขปัญหาโหลดหนัก: เปลี่ยน range เป็น 3d พอเพื่อไม่ให้เซิร์ฟเวอร์ดองสาย
             const yfUrl = "https://query1.finance.yahoo.com/v8/finance/chart/XAUUSD=X?range=3d&interval=1m";
-            
             const proxies = [
                 { url: `https://api.allorigins.win/get?url=${encodeURIComponent(yfUrl)}`, type: 'contents' },
                 { url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(yfUrl)}`, type: 'raw' }
@@ -377,28 +409,21 @@
                 try {
                     const controller = new AbortController();
                     const timeoutId = setTimeout(() => controller.abort(), 6000); 
-                    
                     const res = await fetch(proxy.url, { signal: controller.signal });
                     clearTimeout(timeoutId);
                     
                     if (!res.ok) continue; 
-                    
                     let data;
                     if (proxy.type === 'contents') {
-                        const wrapper = await res.json();
-                        data = JSON.parse(wrapper.contents); // แปลงเนื้อหาด้านในอีกรอบ
-                    } else {
-                        data = await res.json();
-                    }
+                        const wrapper = await res.json(); data = JSON.parse(wrapper.contents);
+                    } else { data = await res.json(); }
                     
                     if (!data.chart || !data.chart.result || !data.chart.result[0]) continue;
                     
                     const result = data.chart.result[0];
-                    const timestamps = result.timestamp;
-                    const quotes = result.indicators.quote[0];
+                    const timestamps = result.timestamp; const quotes = result.indicators.quote[0];
                     
-                    let formatted = [];
-                    let lastT = 0;
+                    let formatted = []; let lastT = 0;
                     for (let i = 0; i < timestamps.length; i++) {
                         if (quotes.close[i] !== null && quotes.open[i] !== null && timestamps[i] > lastT) {
                             formatted.push({
@@ -408,14 +433,11 @@
                         }
                     }
                     if (formatted.length > 0) return formatted;
-                } catch (err) {
-                    continue; // ถ้ารับข้อมูลไม่ได้ ให้วิ่งไปหา Proxy ตัวต่อไป
-                }
+                } catch (err) { continue; }
             }
             throw new Error("Forex API Failed");
         }
 
-        // --- 2. ยางอะไหล่: ดึงกราฟ PAXG สำรอง (Fallback) ถ้าระบบหลักพัง ---
         async function fetchFallbackPAXG() {
             const res = await fetch(`https://data-api.binance.vision/api/v3/klines?symbol=PAXGUSDT&interval=1m&limit=360`);
             const data = await res.json();
@@ -427,10 +449,8 @@
 
         async function processMarketData() {
             try {
-                let formattedData;
-                let isFallback = false;
+                let formattedData; let isFallback = false;
 
-                // พยายามโหลดกราฟ Forex ก่อน ถ้าล้มเหลวจะกระโดดไปดึง PAXG มากันเหนียวทันที
                 try {
                     formattedData = await fetchRealForexGold();
                 } catch(e) {
@@ -440,25 +460,16 @@
                 }
 
                 if(!formattedData || formattedData.length === 0) return;
-
                 candleSeries.setData(formattedData);
 
                 const closes = formattedData.map(d => d.close);
-                const highs = formattedData.map(d => d.high);
-                const lows = formattedData.map(d => d.low);
                 const currentPrice = closes[closes.length - 1];
                 const lastTimestamp = formattedData[formattedData.length - 1].time;
 
-                // อัปเดตป้ายสถานะ (บอกให้รู้ว่าตอนนี้ใช้กราฟอะไรอยู่ หรือตลาดปิดไหม)
                 if (isFallback) {
                     document.getElementById('market-status').innerHTML = '<span style="color:var(--level-gold)">●</span> FALLBACK MODE (PAXG/USDT)';
                     document.getElementById('market-status').style.color = "var(--level-gold)";
-                    document.getElementById('symbol-display').innerText = "GOLD (PAXG/USDT) M1 FALLBACK";
-                    document.getElementById('node-symbol').innerText = "PAXGUSDT / M1";
                 } else {
-                    document.getElementById('symbol-display').innerText = "GOLD (XAU/USD) M1 FOREX";
-                    document.getElementById('node-symbol').innerText = "XAUUSD / M1";
-                    
                     const nowSec = Math.floor(Date.now() / 1000);
                     if (nowSec - lastTimestamp > 7200) {
                         document.getElementById('market-status').innerHTML = '<span style="color:var(--sell-color)">●</span> MARKET CLOSED (WEEKEND)';
@@ -471,98 +482,87 @@
 
                 document.getElementById('livePrice').innerText = currentPrice.toFixed(2);
                 document.getElementById('livePrice').style.color = "var(--cyan)";
-                
                 checkOpenTrades(currentPrice);
 
                 const rsiValues = calculateRSI(closes, 14);
-                const atrValues = calculateATR(highs, lows, closes, 14);
-                
                 const currentRsi = rsiValues[rsiValues.length - 1];
-                const currentAtr = atrValues[atrValues.length - 1];
-
-                const recentHighs = highs.slice(-60);
-                const recentLows = lows.slice(-60);
-                const resistance = Math.max(...recentHighs);
-                const support = Math.min(...recentLows);
 
                 document.getElementById('val-rsi').innerText = currentRsi.toFixed(2);
                 document.getElementById('val-rsi').className = "ai-card-value " + (currentRsi > 65 ? "val-sell" : currentRsi < 35 ? "val-buy" : "val-neutral");
-                document.getElementById('val-atr').innerText = currentAtr.toFixed(2);
-                document.getElementById('val-res').innerText = resistance.toFixed(2);
-                document.getElementById('val-sup').innerText = support.toFixed(2);
 
-                if(resLine) candleSeries.removePriceLine(resLine);
-                if(supLine) candleSeries.removePriceLine(supLine);
-                resLine = candleSeries.createPriceLine({ price: resistance, color: '#ff3366', lineWidth: 1, lineStyle: 2, title: 'RES' });
-                supLine = candleSeries.createPriceLine({ price: support, color: '#00ff66', lineWidth: 1, lineStyle: 2, title: 'SUP' });
+                // --- อัปเดตสถานะ RSI Divergence ---
+                let divStatus = checkDivergence(closes, rsiValues);
+                document.getElementById('val-div').innerText = divStatus;
+                if(divStatus === "BULLISH DIV") document.getElementById('val-div').style.color = "var(--buy-color)";
+                else if(divStatus === "BEARISH DIV") document.getElementById('val-div').style.color = "var(--sell-color)";
+                else document.getElementById('val-div').style.color = "var(--text-dim)";
 
-                let markers = [];
-                let lastMarkerType = "NONE"; 
-                for(let i = 20; i < formattedData.length; i++) {
-                    let rsiHistory = rsiValues[i] || 50; 
-                    let priceHistory = formattedData[i].close;
-                    
-                    let isBuyCondition = (priceHistory - support) <= 2.0 && rsiHistory < 35;
-                    let isSellCondition = (resistance - priceHistory) <= 2.0 && rsiHistory > 65;
+                // --- อัปเดตกรอบ FVG บนกราฟ ---
+                let latestFVG = findLatestFVG(formattedData);
+                if(fvgTopLine) candleSeries.removePriceLine(fvgTopLine);
+                if(fvgBotLine) candleSeries.removePriceLine(fvgBotLine);
+                if(fvgMidLine) candleSeries.removePriceLine(fvgMidLine);
 
-                    if(isBuyCondition && lastMarkerType !== "BUY") {
-                        markers.push({ time: formattedData[i].time, position: 'belowBar', color: '#00ff66', shape: 'arrowUp', text: 'BUY' });
-                        lastMarkerType = "BUY";
-                    } 
-                    else if(isSellCondition && lastMarkerType !== "SELL") {
-                        markers.push({ time: formattedData[i].time, position: 'aboveBar', color: '#ff3366', shape: 'arrowDown', text: 'SELL' });
-                        lastMarkerType = "SELL";
-                    }
+                if (latestFVG) {
+                    fvgTopLine = candleSeries.createPriceLine({ price: latestFVG.top, color: 'rgba(139, 92, 246, 0.4)', lineWidth: 1, lineStyle: 2, title: 'FVG' });
+                    fvgBotLine = candleSeries.createPriceLine({ price: latestFVG.bottom, color: 'rgba(139, 92, 246, 0.4)', lineWidth: 1, lineStyle: 2, title: 'FVG' });
+                    fvgMidLine = candleSeries.createPriceLine({ price: latestFVG.mid, color: '#8b5cf6', lineWidth: 2, lineStyle: 0, title: '50%' });
+
+                    document.getElementById('val-fvg').innerText = latestFVG.mid.toFixed(2);
+                    document.getElementById('val-fvg-type').innerText = latestFVG.type;
+                    document.getElementById('val-fvg-type').style.color = latestFVG.type === 'BULLISH' ? "var(--buy-color)" : "var(--sell-color)";
+                } else {
+                    document.getElementById('val-fvg').innerText = "FILLED";
+                    document.getElementById('val-fvg-type').innerText = "--";
+                    document.getElementById('val-fvg-type').style.color = "var(--text-dim)";
                 }
-                candleSeries.setMarkers(markers);
 
-                let action = "WAIT"; let actionColor = "var(--level-gold)"; let iconText = "⏳"; let subText = "SCANNING CONFLUENCE ZONE...";
+                // --- 4. การตัดสินใจของ AI (ใช้ Kill Zone, FVG 50% และ Divergence Filter) ---
+                let action = "WAIT"; let actionColor = "var(--level-gold)"; let iconText = "⏳"; 
+                let currentZone = checkKillZone(Date.now());
+                let subText = currentZone ? "SCANNING FVG 50% ZONE..." : "OUTSIDE KILL ZONE (WAITING)";
 
-                if ((currentPrice - support) <= 2.0 && currentRsi < 35) {
-                    action = "BUY"; actionColor = "var(--buy-color)"; iconText = "↑"; subText = "RSI OVERSOLD + SUPPORT BOUNCE";
-                } else if ((resistance - currentPrice) <= 2.0 && currentRsi > 65) {
-                    action = "SELL"; actionColor = "var(--sell-color)"; iconText = "↓"; subText = "RSI OVERBOUGHT + RESISTANCE REJECT";
+                if (currentZone && latestFVG) {
+                    let distToMid = Math.abs(currentPrice - latestFVG.mid);
+                    if (distToMid <= 0.50) { 
+                        // กรองการเข้าเทรดด้วย Divergence: ถ้ามี Bearish Div ห้ามเข้า BUY / ถ้ามี Bullish Div ห้ามเข้า SELL
+                        if (latestFVG.type === 'BULLISH' && currentRsi < 45 && divStatus !== "BEARISH DIV") { 
+                            action = "BUY"; actionColor = "var(--buy-color)"; iconText = "↑"; subText = "FVG 50% ENTRY + " + currentZone;
+                        } else if (latestFVG.type === 'BEARISH' && currentRsi > 55 && divStatus !== "BULLISH DIV") { 
+                            action = "SELL"; actionColor = "var(--sell-color)"; iconText = "↓"; subText = "FVG 50% ENTRY + " + currentZone;
+                        } else if (divStatus !== "NONE") {
+                            subText = "DIVERGENCE TRAP DETECTED! (ENTRY CANCELLED)";
+                        }
+                    }
                 }
 
                 if (action !== "WAIT" && action !== lastLockedSignal) {
                     lastLockedSignal = action;
-                    
                     const now = new Date();
                     const thaiTime = now.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-                    document.getElementById('exec-action').innerText = action;
-                    document.getElementById('exec-action').style.color = actionColor;
-                    
-                    const iconEl = document.getElementById('exec-icon');
-                    iconEl.innerText = iconText; iconEl.style.color = actionColor; iconEl.style.borderColor = actionColor;
+                    document.getElementById('exec-action').innerText = action; document.getElementById('exec-action').style.color = actionColor;
+                    const iconEl = document.getElementById('exec-icon'); iconEl.innerText = iconText; iconEl.style.color = actionColor; iconEl.style.borderColor = actionColor;
                     iconEl.style.background = action === "BUY" ? "rgba(0, 255, 102, 0.1)" : "rgba(255, 51, 102, 0.1)";
-
-                    document.getElementById('exec-subtext').innerText = subText;
-                    document.getElementById('exec-price').innerText = currentPrice.toFixed(2);
-                    document.getElementById('exec-time').innerText = thaiTime;
-
+                    document.getElementById('exec-subtext').innerText = subText; document.getElementById('exec-price').innerText = currentPrice.toFixed(2); document.getElementById('exec-time').innerText = thaiTime;
                     recordSignal(action, currentPrice);
+                } else if (action === "WAIT") {
+                    document.getElementById('exec-subtext').innerText = subText;
                 }
 
             } catch (error) { 
-                console.error("Critical Fetch Issue:", error); 
-                // ถึงจุดนี้คือเน็ตพังล้วนๆ ไม่มีข้อมูลใดๆ โหลดได้เลย
+                console.error("Fetch Issue:", error); 
                 if (document.getElementById('livePrice').innerText === "Loading...") {
-                    document.getElementById('livePrice').innerText = "CONNECT ERROR";
-                    document.getElementById('livePrice').style.color = "var(--sell-color)";
+                    document.getElementById('livePrice').innerText = "CONNECT ERROR"; document.getElementById('livePrice').style.color = "var(--sell-color)";
                 }
-                document.getElementById('exec-subtext').innerText = "RETRYING DATA FROM MARKET...";
             }
         }
 
         window.addEventListener('resize', () => { chart.resize(document.getElementById('tvchart').clientWidth, document.getElementById('tvchart').clientHeight); });
-        
-        processMarketData(); 
-        setInterval(processMarketData, 15000); 
-
+        processMarketData(); setInterval(processMarketData, 15000); 
     </script>
 
-    <!-- SECURITY SCRIPT: ป้องกันคลิกขวาและปุ่มลัด -->
+    <!-- SECURITY SCRIPT -->
     <script>
         document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
         document.onkeydown = function(e) {
