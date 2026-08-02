@@ -118,7 +118,7 @@
     <!-- Chart Section -->
     <div class="chart-container">
         <div class="current-price-badge">
-            <div class="symbol-label">GOLD (XAU/USD) M1 FOREX</div>
+            <div class="symbol-label" id="symbol-display">GOLD (XAU/USD) M1 FOREX</div>
             <div id="livePrice">Loading...</div>
         </div>
         <div id="tvchart" style="width: 100%; height: 100%;"></div>
@@ -129,7 +129,7 @@
         <div class="panel">
             <div class="panel-header">
                 <span>EXECUTION NODE</span>
-                <span style="color: var(--cyan);">XAUUSD / M1</span>
+                <span style="color: var(--cyan);" id="node-symbol">XAUUSD / M1</span>
             </div>
             <div class="exec-signal-row">
                 <div class="exec-icon" id="exec-icon">⏳</div>
@@ -363,35 +363,34 @@
         let resLine = null; let supLine = null;
         let lastLockedSignal = "WAIT";
 
-        // --- ดึงข้อมูล XAUUSD ด้วยระบบท่อคู่ (Multi-Proxy Fallback) ป้องกันโดนแบน IP ---
+        // --- 1. ดึงข้อมูล XAUUSD (Forex) แบบลดการโหลด ป้องกันการตัดสาย ---
         async function fetchRealForexGold() {
-            // ใช้ range=5d เพื่อครอบคลุมเสาร์-อาทิตย์ และพ่วง Date.now() เพื่อแก้ปัญหา Cache
-            const yfUrl = "https://query1.finance.yahoo.com/v8/finance/chart/XAUUSD=X?range=5d&interval=1m&_=" + Date.now();
+            // แก้ไขปัญหาโหลดหนัก: เปลี่ยน range เป็น 3d พอเพื่อไม่ให้เซิร์ฟเวอร์ดองสาย
+            const yfUrl = "https://query1.finance.yahoo.com/v8/finance/chart/XAUUSD=X?range=3d&interval=1m";
             
-            // เตรียมท่อ Proxy 3 แบบ เพื่อสลับกันอัตโนมัติเมื่ออันใดอันนึงโดนบล็อก
             const proxies = [
-                `https://api.allorigins.win/raw?url=${encodeURIComponent(yfUrl)}`,
-                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(yfUrl)}`,
-                `https://corsproxy.io/?${encodeURIComponent(yfUrl)}`
+                { url: `https://api.allorigins.win/get?url=${encodeURIComponent(yfUrl)}`, type: 'contents' },
+                { url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(yfUrl)}`, type: 'raw' }
             ];
             
-            let lastErr = null;
-            
-            // ลูปทำงาน: ถ้าท่อแรกพัง จะเปลี่ยนไปท่อสอง ท่อสาม ทันที
-            for (let proxyUrl of proxies) {
+            for (let proxy of proxies) {
                 try {
                     const controller = new AbortController();
                     const timeoutId = setTimeout(() => controller.abort(), 6000); 
                     
-                    const res = await fetch(proxyUrl, { signal: controller.signal });
+                    const res = await fetch(proxy.url, { signal: controller.signal });
                     clearTimeout(timeoutId);
                     
-                    // ถ้ายิงไม่ผ่าน หรือโดน Rate limit ให้ข้ามไปลอง Proxy ตัวถัดไป
                     if (!res.ok) continue; 
                     
-                    const data = await res.json();
+                    let data;
+                    if (proxy.type === 'contents') {
+                        const wrapper = await res.json();
+                        data = JSON.parse(wrapper.contents); // แปลงเนื้อหาด้านในอีกรอบ
+                    } else {
+                        data = await res.json();
+                    }
                     
-                    // ตรวจสอบว่า Yahoo ส่งข้อมูลที่สมบูรณ์มาให้หรือไม่
                     if (!data.chart || !data.chart.result || !data.chart.result[0]) continue;
                     
                     const result = data.chart.result[0];
@@ -408,18 +407,38 @@
                             lastT = timestamps[i];
                         }
                     }
-                    return formatted; // ได้ข้อมูลครบปุ๊บ คืนค่าให้กราฟทันที
+                    if (formatted.length > 0) return formatted;
                 } catch (err) {
-                    lastErr = err;
-                    continue; // ถ้า Error ติด Timeout ให้ลอง Proxy ตัวถัดไป
+                    continue; // ถ้ารับข้อมูลไม่ได้ ให้วิ่งไปหา Proxy ตัวต่อไป
                 }
             }
-            throw new Error("All proxies failed.");
+            throw new Error("Forex API Failed");
+        }
+
+        // --- 2. ยางอะไหล่: ดึงกราฟ PAXG สำรอง (Fallback) ถ้าระบบหลักพัง ---
+        async function fetchFallbackPAXG() {
+            const res = await fetch(`https://data-api.binance.vision/api/v3/klines?symbol=PAXGUSDT&interval=1m&limit=360`);
+            const data = await res.json();
+            return data.map(d => ({
+                time: parseInt(d[0]) / 1000,
+                open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4])
+            }));
         }
 
         async function processMarketData() {
             try {
-                const formattedData = await fetchRealForexGold();
+                let formattedData;
+                let isFallback = false;
+
+                // พยายามโหลดกราฟ Forex ก่อน ถ้าล้มเหลวจะกระโดดไปดึง PAXG มากันเหนียวทันที
+                try {
+                    formattedData = await fetchRealForexGold();
+                } catch(e) {
+                    console.warn("FOREX DOWN: Fallback to PAXG");
+                    formattedData = await fetchFallbackPAXG();
+                    isFallback = true;
+                }
+
                 if(!formattedData || formattedData.length === 0) return;
 
                 candleSeries.setData(formattedData);
@@ -430,13 +449,24 @@
                 const currentPrice = closes[closes.length - 1];
                 const lastTimestamp = formattedData[formattedData.length - 1].time;
 
-                const nowSec = Math.floor(Date.now() / 1000);
-                if (nowSec - lastTimestamp > 7200) {
-                    document.getElementById('market-status').innerHTML = '<span style="color:var(--sell-color)">●</span> MARKET CLOSED (WEEKEND)';
-                    document.getElementById('market-status').style.color = "var(--sell-color)";
+                // อัปเดตป้ายสถานะ (บอกให้รู้ว่าตอนนี้ใช้กราฟอะไรอยู่ หรือตลาดปิดไหม)
+                if (isFallback) {
+                    document.getElementById('market-status').innerHTML = '<span style="color:var(--level-gold)">●</span> FALLBACK MODE (PAXG/USDT)';
+                    document.getElementById('market-status').style.color = "var(--level-gold)";
+                    document.getElementById('symbol-display').innerText = "GOLD (PAXG/USDT) M1 FALLBACK";
+                    document.getElementById('node-symbol').innerText = "PAXGUSDT / M1";
                 } else {
-                    document.getElementById('market-status').innerHTML = '<span>●</span> LIVE FOREX ENGINE (XAUUSD)';
-                    document.getElementById('market-status').style.color = "var(--buy-color)";
+                    document.getElementById('symbol-display').innerText = "GOLD (XAU/USD) M1 FOREX";
+                    document.getElementById('node-symbol').innerText = "XAUUSD / M1";
+                    
+                    const nowSec = Math.floor(Date.now() / 1000);
+                    if (nowSec - lastTimestamp > 7200) {
+                        document.getElementById('market-status').innerHTML = '<span style="color:var(--sell-color)">●</span> MARKET CLOSED (WEEKEND)';
+                        document.getElementById('market-status').style.color = "var(--sell-color)";
+                    } else {
+                        document.getElementById('market-status').innerHTML = '<span>●</span> LIVE FOREX ENGINE (XAUUSD)';
+                        document.getElementById('market-status').style.color = "var(--buy-color)";
+                    }
                 }
 
                 document.getElementById('livePrice').innerText = currentPrice.toFixed(2);
@@ -515,9 +545,9 @@
                 }
 
             } catch (error) { 
-                console.error("Fetch Data Issue:", error); 
-                // Soft-Fail: จะขึ้นแจ้งเตือนสีแดง ก็ต่อเมื่อไม่มีข้อมูลกราฟแสดงอยู่เลยเท่านั้น
-                if (document.getElementById('livePrice').innerText === "Loading..." || document.getElementById('livePrice').innerText === "CONNECT ERROR") {
+                console.error("Critical Fetch Issue:", error); 
+                // ถึงจุดนี้คือเน็ตพังล้วนๆ ไม่มีข้อมูลใดๆ โหลดได้เลย
+                if (document.getElementById('livePrice').innerText === "Loading...") {
                     document.getElementById('livePrice').innerText = "CONNECT ERROR";
                     document.getElementById('livePrice').style.color = "var(--sell-color)";
                 }
@@ -527,7 +557,6 @@
 
         window.addEventListener('resize', () => { chart.resize(document.getElementById('tvchart').clientWidth, document.getElementById('tvchart').clientHeight); });
         
-        // ขยายเวลาดีเลย์เป็น 15 วินาที เพื่อทะนุถนอมเซิร์ฟเวอร์ Proxy ป้องกันการโดนแบน IP
         processMarketData(); 
         setInterval(processMarketData, 15000); 
 
