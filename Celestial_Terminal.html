@@ -23,20 +23,13 @@
             --border-color: #1a2642;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
+        /* --- Anti-Copy (ป้องกันการคลุมดำก๊อปปี้ข้อความ) --- */
         body {
-            background-color: var(--bg-main);
-            color: var(--text-light);
-            font-family: 'Inter', sans-serif;
-            padding: 15px;
-
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
-            
+            -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;
+            background-color: var(--bg-main); color: var(--text-light); font-family: 'Inter', sans-serif; padding: 15px;
         }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         /* --- Header & Nav Button --- */
         .header {
@@ -45,7 +38,7 @@
             margin-bottom: 20px; border: 1px solid var(--border-color);
         }
         .brand-title { font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 700; color: var(--cyan); }
-        .status-dot { color: var(--buy-color); font-size: 11px; letter-spacing: 2px; margin-top: 5px;}
+        .status-dot { color: var(--buy-color); font-size: 11px; letter-spacing: 2px; margin-top: 5px; font-weight: 600;}
         .status-dot span { display: inline-block; animation: blink 1.5s infinite; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
@@ -70,9 +63,7 @@
         .symbol-label { font-size: 11px; color: var(--level-gold); letter-spacing: 1px; margin-bottom: 2px;}
 
         /* --- Layout Grid ล่างกราฟ --- */
-        .bottom-grid {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;
-        }
+        .bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
         @media (max-width: 900px) { .bottom-grid { grid-template-columns: 1fr; } }
 
         /* --- Panel ทั่วไป --- */
@@ -117,7 +108,7 @@
     <div class="header">
         <div>
             <div class="brand-title">CELESTIAL COMMAND MATRIX</div>
-            <div class="status-dot"><span>●</span> LIVE MARKET ENGINE (PAXG/USDT)</div>
+            <div class="status-dot" id="market-status"><span>●</span> LIVE FOREX ENGINE (XAU/USD)</div>
         </div>
         <div>
             <a href="index.html" class="nav-btn">📊 PORTFOLIO DASHBOARD</a>
@@ -127,7 +118,7 @@
     <!-- Chart Section -->
     <div class="chart-container">
         <div class="current-price-badge">
-            <div class="symbol-label">GOLD (PAXG/USDT) M1</div>
+            <div class="symbol-label">GOLD (XAU/USD) M1 FOREX</div>
             <div id="livePrice">Loading...</div>
         </div>
         <div id="tvchart" style="width: 100%; height: 100%;"></div>
@@ -138,7 +129,7 @@
         <div class="panel">
             <div class="panel-header">
                 <span>EXECUTION NODE</span>
-                <span style="color: var(--cyan);">PAXGUSDT / M1</span>
+                <span style="color: var(--cyan);">XAUUSD / M1</span>
             </div>
             <div class="exec-signal-row">
                 <div class="exec-icon" id="exec-icon">⏳</div>
@@ -229,7 +220,7 @@
     </div>
 
     <script>
-        // --- ส่วนที่ 1: สูตรคำนวณ Indicator (Fast Pure JS) ---
+        // --- ระบบสถิติ และคำนวณ Indicator ---
         function calculateRSI(closes, period = 14) {
             if (closes.length <= period) return Array(closes.length).fill(50);
             let rsi = new Array(closes.length).fill(0);
@@ -279,15 +270,9 @@
             return atr;
         }
 
-        // --- ส่วนที่ 2: ระบบสถิติ Virtual Trading ---
         const TP_DIST = 5.00; 
         const SL_DIST = 2.50; 
-        
-        let stats = JSON.parse(localStorage.getItem('celestial_stats')) || {
-            daily: { sig: 0, win: 0, loss: 0, date: '' },
-            weekly: { sig: 0, win: 0, loss: 0, date: '' },
-            monthly: { sig: 0, win: 0, loss: 0, date: '' }
-        };
+        let stats = JSON.parse(localStorage.getItem('celestial_stats')) || { daily: { sig: 0, win: 0, loss: 0, date: '' }, weekly: { sig: 0, win: 0, loss: 0, date: '' }, monthly: { sig: 0, win: 0, loss: 0, date: '' } };
         let openTrades = JSON.parse(localStorage.getItem('celestial_open_trades')) || [];
 
         function checkDateRollover() {
@@ -332,10 +317,8 @@
         function checkOpenTrades(currentPrice) {
             checkDateRollover();
             let hasUpdate = false;
-            
             openTrades = openTrades.filter(trade => {
                 let isClosed = false; let isWin = false;
-
                 if (trade.type === 'BUY') {
                     if (currentPrice >= trade.entry + TP_DIST) { isClosed = true; isWin = true; } 
                     else if (currentPrice <= trade.entry - SL_DIST) { isClosed = true; isWin = false; } 
@@ -343,7 +326,6 @@
                     if (currentPrice <= trade.entry - TP_DIST) { isClosed = true; isWin = true; } 
                     else if (currentPrice >= trade.entry + SL_DIST) { isClosed = true; isWin = false; } 
                 }
-
                 if (isClosed) {
                     if (isWin) { stats.daily.win++; stats.weekly.win++; stats.monthly.win++; }
                     else { stats.daily.loss++; stats.weekly.loss++; stats.monthly.loss++; }
@@ -362,14 +344,12 @@
                     localStorage.removeItem('celestial_open_trades');
                     location.reload();
                 }
-            } else if (pin !== null) {
-                alert("❌ ACCESS DENIED: รหัสผ่านไม่ถูกต้อง!");
-            }
+            } else if (pin !== null) { alert("❌ ACCESS DENIED: รหัสผ่านไม่ถูกต้อง!"); }
         }
 
         checkDateRollover(); updateUIStats();
 
-        // --- ส่วนที่ 3: การตั้งค่า Chart ---
+        // --- ตั้งค่ากราฟ ---
         const chartProperties = {
             layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#64748B' },
             grid: { vertLines: { color: 'rgba(30, 41, 59, 0.3)' }, horzLines: { color: 'rgba(30, 41, 59, 0.3)' } },
@@ -383,29 +363,40 @@
         let resLine = null; let supLine = null;
         let lastLockedSignal = "WAIT";
 
-        // --- ส่วนที่ 4: ฟังก์ชันดึงข้อมูลจาก Binance Data API (ป้องกัน ISP Block) ---
-        const symbol = 'PAXGUSDT';
-        const interval = '1m';
-        const limit = 360;
-
-        async function fetchGoldData() {
-            const url = `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+        // --- ดึงข้อมูล XAUUSD (Spot Gold) จากตลาดโลกของจริง (ผ่าน Proxy ป้องกันการบล็อก) ---
+        async function fetchRealForexGold() {
+            // ดึงราคาจาก Yahoo Finance (XAUUSD=X) ซึ่งอิงตามตลาดโลก (จันทร์-ศุกร์)
+            const yfUrl = "https://query1.finance.yahoo.com/v8/finance/chart/XAUUSD=X?range=2d&interval=1m&_=" + Date.now();
+            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yfUrl)}`;
             
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 6000); 
+            const timeoutId = setTimeout(() => controller.abort(), 8000); 
             
             try {
-                const res = await fetch(url, { signal: controller.signal });
+                const res = await fetch(proxyUrl, { signal: controller.signal });
                 clearTimeout(timeoutId);
-                const json = await res.json();
+                const data = await res.json();
                 
-                return json.map(d => ({
-                    time: parseInt(d[0]) / 1000,
-                    open: parseFloat(d[1]),
-                    high: parseFloat(d[2]),
-                    low: parseFloat(d[3]),
-                    close: parseFloat(d[4])
-                }));
+                const result = data.chart.result[0];
+                const timestamps = result.timestamp;
+                const quotes = result.indicators.quote[0];
+                
+                let formatted = [];
+                let lastT = 0;
+                for (let i = 0; i < timestamps.length; i++) {
+                    // กรองข้อมูลที่สมบูรณ์และเรียงลำดับเวลาถูกต้อง
+                    if (quotes.close[i] !== null && quotes.open[i] !== null && timestamps[i] > lastT) {
+                        formatted.push({
+                            time: timestamps[i],
+                            open: quotes.open[i],
+                            high: quotes.high[i],
+                            low: quotes.low[i],
+                            close: quotes.close[i]
+                        });
+                        lastT = timestamps[i];
+                    }
+                }
+                return formatted;
             } catch (err) {
                 clearTimeout(timeoutId);
                 throw err;
@@ -414,7 +405,8 @@
 
         async function processMarketData() {
             try {
-                const formattedData = await fetchGoldData();
+                const formattedData = await fetchRealForexGold();
+                if(!formattedData || formattedData.length === 0) return;
 
                 candleSeries.setData(formattedData);
 
@@ -422,6 +414,17 @@
                 const highs = formattedData.map(d => d.high);
                 const lows = formattedData.map(d => d.low);
                 const currentPrice = closes[closes.length - 1];
+                const lastTimestamp = formattedData[formattedData.length - 1].time;
+
+                // เช็คว่าตลาดปิดอยู่หรือไม่ (วันเสาร์-อาทิตย์) ถ้าราคาไม่ขยับเกิน 2 ชั่วโมง = ปิด
+                const nowSec = Math.floor(Date.now() / 1000);
+                if (nowSec - lastTimestamp > 7200) {
+                    document.getElementById('market-status').innerHTML = '<span style="color:var(--sell-color)">●</span> MARKET CLOSED (WEEKEND)';
+                    document.getElementById('market-status').style.color = "var(--sell-color)";
+                } else {
+                    document.getElementById('market-status').innerHTML = '<span>●</span> LIVE FOREX ENGINE (XAUUSD)';
+                    document.getElementById('market-status').style.color = "var(--buy-color)";
+                }
 
                 document.getElementById('livePrice').innerText = currentPrice.toFixed(2);
                 document.getElementById('livePrice').style.color = "var(--cyan)";
@@ -450,10 +453,9 @@
                 resLine = candleSeries.createPriceLine({ price: resistance, color: '#ff3366', lineWidth: 1, lineStyle: 2, title: 'RES' });
                 supLine = candleSeries.createPriceLine({ price: support, color: '#00ff66', lineWidth: 1, lineStyle: 2, title: 'SUP' });
 
-               // --- ระบบวาดลูกศรแบบ Anti-Spam (ไม่พ่นซ้ำ) ---
+                // --- วาดลูกศรแบบ Anti-Spam ---
                 let markers = [];
-                let lastMarkerType = "NONE"; // จำสถานะลูกศรล่าสุดไว้
-
+                let lastMarkerType = "NONE"; 
                 for(let i = 20; i < formattedData.length; i++) {
                     let rsiHistory = rsiValues[i] || 50; 
                     let priceHistory = formattedData[i].close;
@@ -461,12 +463,10 @@
                     let isBuyCondition = (priceHistory - support) <= 2.0 && rsiHistory < 35;
                     let isSellCondition = (resistance - priceHistory) <= 2.0 && rsiHistory > 65;
 
-                    // จะยิง BUY ก็ต่อเมื่อ เข้าเงื่อนไข และ ลูกศรล่าสุดไม่ใช่ BUY (กันซ้ำ)
                     if(isBuyCondition && lastMarkerType !== "BUY") {
                         markers.push({ time: formattedData[i].time, position: 'belowBar', color: '#00ff66', shape: 'arrowUp', text: 'BUY' });
                         lastMarkerType = "BUY";
                     } 
-                    // จะยิง SELL ก็ต่อเมื่อ เข้าเงื่อนไข และ ลูกศรล่าสุดไม่ใช่ SELL (กันซ้ำ)
                     else if(isSellCondition && lastMarkerType !== "SELL") {
                         markers.push({ time: formattedData[i].time, position: 'aboveBar', color: '#ff3366', shape: 'arrowDown', text: 'SELL' });
                         lastMarkerType = "SELL";
@@ -506,49 +506,27 @@
                 console.error(error); 
                 document.getElementById('livePrice').innerText = "CONNECT ERROR";
                 document.getElementById('livePrice').style.color = "var(--sell-color)";
-                document.getElementById('exec-subtext').innerText = "RETRAYING IN 5 SECONDS...";
+                document.getElementById('exec-subtext').innerText = "RETRAYING DATA FROM MARKET...";
             }
         }
 
         window.addEventListener('resize', () => { chart.resize(document.getElementById('tvchart').clientWidth, document.getElementById('tvchart').clientHeight); });
         
+        // อัปเดตข้อมูลทุกๆ 10 วินาที เพื่อไม่ให้เซิร์ฟเวอร์เพ่งเล็งว่าเราสแปมข้อมูล
         processMarketData(); 
-        setInterval(processMarketData, 5000);
-
-        
+        setInterval(processMarketData, 10000); 
 
     </script>
-    <!-- ========================================== -->
-    <!-- SECURITY SCRIPT: ป้องกันคลิกขวาและปุ่มลัด -->
-    <!-- ========================================== -->
-    <script>
-        // 1. ป้องกันการคลิกขวา (Right Click)
-        document.addEventListener('contextmenu', function(e) {
-            e.preventDefault();
-        });
 
-        // 2. ป้องกันการกดปุ่มลัดบนคีย์บอร์ด
+    <!-- SECURITY SCRIPT: ป้องกันคลิกขวาและปุ่มลัด -->
+    <script>
+        document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
         document.onkeydown = function(e) {
-            // บล็อก F12 (เปิดเครื่องมือ DevTools)
-            if (e.keyCode == 123) {
-                return false;
-            }
-            // บล็อก Ctrl+U (View Source)
-            if (e.ctrlKey && e.keyCode == 85) {
-                return false;
-            }
-            // บล็อก Ctrl+Shift+I / J / C (เปิดแผง Inspect Element)
-            if (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74 || e.keyCode == 67)) {
-                return false;
-            }
-            // บล็อก Ctrl+S (Save หน้าเว็บลงเครื่อง)
-            if (e.ctrlKey && e.keyCode == 83) {
-                return false;
-            }
-            // บล็อก Ctrl+P (Print หน้าเว็บ)
-            if (e.ctrlKey && e.keyCode == 80) {
-                return false;
-            }
+            if (e.keyCode == 123) return false;
+            if (e.ctrlKey && e.keyCode == 85) return false;
+            if (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74 || e.keyCode == 67)) return false;
+            if (e.ctrlKey && e.keyCode == 83) return false;
+            if (e.ctrlKey && e.keyCode == 80) return false;
         };
     </script>
 </body>
