@@ -205,11 +205,6 @@
     </div>
 
     <script>
-        // =========================================================================================
-        // ⭐ นำ URL ของ GOOGLE APPS SCRIPT (ที่กด Deploy ใหม่) มาวางในบรรทัดด้านล่างนี้
-        // =========================================================================================
-        const GAS_PRIVATE_API_URL = "https://script.google.com/macros/s/AKfycbxLb84ulUoZSZkI6-v4nr2Zkzkhd-WzSiT_nVDLDtvntaRouoSJa7Xm8iEdUuSLqP3u5A/exec"; 
-
         function checkKillZone(timestampMs) {
             const d = new Date(timestampMs);
             const h = d.getHours();
@@ -359,49 +354,31 @@
 
         let fvgTopLine = null; let fvgBotLine = null; let fvgMidLine = null; let lastLockedSignal = "WAIT";
 
-        // --- ระบบดึงข้อมูลจาก Google Apps Script (แบบอ่าน Error ได้) ---
+        // =========================================================================================
+        // ⭐ เปลี่ยนระบบดึงข้อมูลมาใช้ BYBIT API โดยตรง (แม่นยำ ไม่โดนบล็อก ไม่ต้องผ่าน Google Script)
+        // =========================================================================================
         async function fetchRealForexGold() {
-            if(GAS_PRIVATE_API_URL.includes("วาง_URL")) {
-                throw new Error("Missing Google Script URL");
-            }
-
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000); 
+            // ดึงราคาทอง Spot (XAUUSDT) จากกระดาน Bybit ที่รัน 24 ชม. และปิด เสาร์-อาทิตย์ เหมือน Forex
+            const url = "https://api.bybit.com/v5/market/kline?category=linear&symbol=XAUUSDT&interval=1&limit=300";
             
-            const res = await fetch(GAS_PRIVATE_API_URL, { signal: controller.signal, redirect: "follow" });
-            clearTimeout(timeoutId);
+            const res = await fetch(url);
+            if (!res.ok) throw new Error("Bybit API Error");
             
-            if (!res.ok) throw new Error("HTTP Error " + res.status);
+            const data = await res.json();
+            if (data.retCode !== 0) throw new Error(data.retMsg);
             
-            // อ่านค่าที่ได้มาเป็น Text ก่อน เพื่อตรวจสอบว่าส่งอะไรมาให้ (ตัวเลข, หรือหน้าเว็บ HTML)
-            const textData = await res.text();
+            // ข้อมูลจาก Bybit จะส่งจาก ใหม่ ไป เก่า เราต้องกลับด้านให้เป็น เก่า ไป ใหม่
+            const list = data.result.list.reverse();
             
-            // 🛑 ถ้า Google ส่งหน้าเว็บ HTML สำหรับให้ Login มา แสดงว่าตั้งค่า "ดำเนินการในฐานะ" ผิด
-            if (textData.includes("<html") || textData.includes("<HTML") || textData.includes("Sign in")) {
-                throw new Error("ERROR: กรุณาตั้งค่า 'Execute as' เป็น 'Me' ใน Google Script");
-            }
-
-            const data = JSON.parse(textData);
-            
-            // 🛑 ถ้า Google ฟ้องว่า Yahoo บล็อกทุกช่องทาง
-            if (data.error) {
-                throw new Error("ERROR: " + data.error);
-            }
-            
-            if (!data.chart || !data.chart.result || !data.chart.result[0]) throw new Error("Invalid Yahoo Data");
-            
-            const result = data.chart.result[0];
-            const timestamps = result.timestamp; 
-            const quotes = result.indicators.quote[0];
-            
-            let formatted = []; let lastT = 0;
-            for (let i = 0; i < timestamps.length; i++) {
-                if (quotes.close[i] !== null && quotes.open[i] !== null && timestamps[i] > lastT) {
-                    formatted.push({
-                        time: timestamps[i], open: quotes.open[i], high: quotes.high[i], low: quotes.low[i], close: quotes.close[i]
-                    });
-                    lastT = timestamps[i];
-                }
+            let formatted = [];
+            for (let i = 0; i < list.length; i++) {
+                formatted.push({
+                    time: parseInt(list[i][0]) / 1000, // แปลง milliseconds เป็น seconds
+                    open: parseFloat(list[i][1]),
+                    high: parseFloat(list[i][2]),
+                    low: parseFloat(list[i][3]),
+                    close: parseFloat(list[i][4])
+                });
             }
             return formatted;
         }
@@ -417,11 +394,10 @@
                 let formattedData; let isFallback = false;
 
                 try {
+                    // ดึง XAUUSDT จาก Bybit ตรงๆ เลย
                     formattedData = await fetchRealForexGold();
                 } catch(e) {
-                    // ปริ้นสาเหตุที่แท้จริงออกทาง Console (F12) และบอกผู้ใช้บนหน้าจอ
                     console.error("FOREX ERROR DETECTED:", e.message);
-                    
                     document.getElementById('exec-subtext').innerText = "⚠️ " + e.message;
                     document.getElementById('exec-subtext').style.color = "var(--sell-color)";
                     
@@ -446,6 +422,7 @@
                     document.getElementById('node-symbol').innerText = "XAUUSD / M1";
                     
                     const nowSec = Math.floor(Date.now() / 1000);
+                    // ถ้าราคาไม่ขยับเกิน 2 ชม. (7200 วิ) แสดงว่าตลาด Forex ปิดเสาร์-อาทิตย์
                     if (nowSec - lastTimestamp > 7200) {
                         document.getElementById('market-status').innerHTML = '<span style="color:var(--sell-color)">●</span> MARKET CLOSED (WEEKEND)';
                         document.getElementById('market-status').style.color = "var(--sell-color)";
@@ -533,10 +510,9 @@
         window.addEventListener('resize', () => { chart.resize(document.getElementById('tvchart').clientWidth, document.getElementById('tvchart').clientHeight); });
         
         processMarketData(); 
-        setInterval(processMarketData, 15000); 
+        setInterval(processMarketData, 10000); // ดึงข้อมูลทุก 10 วิ ได้สบายๆ เพราะ API ไม่บล็อกแล้ว
     </script>
 
-    <!-- SECURITY SCRIPT -->
     <script>
         document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
         document.onkeydown = function(e) {
