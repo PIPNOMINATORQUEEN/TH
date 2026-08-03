@@ -208,7 +208,7 @@
         // =========================================================================================
         // ⭐ นำ URL ของ GOOGLE APPS SCRIPT (ที่กด Deploy ใหม่) มาวางในบรรทัดด้านล่างนี้
         // =========================================================================================
-        const GAS_PRIVATE_API_URL = "https://script.google.com/macros/s/AKfycbxC8TNm4TvAHloAEU-jY502ShFoeUGnmauIj-ux2vergmpvr73894V76yLSzf010-SFcw/exec"; 
+        const GAS_PRIVATE_API_URL = "https://script.google.com/macros/s/AKfycbxLb84ulUoZSZkI6-v4nr2Zkzkhd-WzSiT_nVDLDtvntaRouoSJa7Xm8iEdUuSLqP3u5A/exec"; 
 
         function checkKillZone(timestampMs) {
             const d = new Date(timestampMs);
@@ -359,62 +359,51 @@
 
         let fvgTopLine = null; let fvgBotLine = null; let fvgMidLine = null; let lastLockedSignal = "WAIT";
 
-        // --- ระบบดึงข้อมูลแบบหลายชั้น ---
+        // --- ระบบดึงข้อมูลจาก Google Apps Script (แบบอ่าน Error ได้) ---
         async function fetchRealForexGold() {
-            const yfUrl = "https://query1.finance.yahoo.com/v8/finance/chart/XAUUSD=X?range=3d&interval=1m&_=" + Date.now();
+            if(GAS_PRIVATE_API_URL.includes("วาง_URL")) {
+                throw new Error("Missing Google Script URL");
+            }
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); 
             
-            // 1. ลองดึงผ่าน Private Google Script ของคุณก่อน
-            const endpoints = [
-                { url: GAS_PRIVATE_API_URL, type: 'gas' },
-                { url: `https://api.allorigins.win/raw?url=${encodeURIComponent(yfUrl)}`, type: 'raw' },
-                { url: `https://corsproxy.io/?${encodeURIComponent(yfUrl)}`, type: 'raw' }
-            ];
+            const res = await fetch(GAS_PRIVATE_API_URL, { signal: controller.signal, redirect: "follow" });
+            clearTimeout(timeoutId);
+            
+            if (!res.ok) throw new Error("HTTP Error " + res.status);
+            
+            // อ่านค่าที่ได้มาเป็น Text ก่อน เพื่อตรวจสอบว่าส่งอะไรมาให้ (ตัวเลข, หรือหน้าเว็บ HTML)
+            const textData = await res.text();
+            
+            // 🛑 ถ้า Google ส่งหน้าเว็บ HTML สำหรับให้ Login มา แสดงว่าตั้งค่า "ดำเนินการในฐานะ" ผิด
+            if (textData.includes("<html") || textData.includes("<HTML") || textData.includes("Sign in")) {
+                throw new Error("ERROR: กรุณาตั้งค่า 'Execute as' เป็น 'Me' ใน Google Script");
+            }
 
-            let lastError = "";
-
-            for (let ep of endpoints) {
-                try {
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 6000); 
-                    
-                    const res = await fetch(ep.url, { signal: controller.signal, redirect: "follow" });
-                    clearTimeout(timeoutId);
-                    
-                    if (!res.ok) throw new Error("HTTP Error " + res.status);
-                    
-                    // อ่านเป็นข้อความดิบก่อนเพื่อเช็คว่า Yahoo ส่งหน้าจอ Error กลับมาให้ Google หรือเปล่า
-                    const textData = await res.text();
-                    
-                    if (textData.includes("Forbidden") || textData.includes("<html") || textData.includes("Will be right back")) {
-                        throw new Error("Blocked by Yahoo");
-                    }
-
-                    const data = JSON.parse(textData);
-                    
-                    if (!data.chart || !data.chart.result || !data.chart.result[0]) throw new Error("Invalid JSON Format");
-                    
-                    const result = data.chart.result[0];
-                    if (!result.timestamp) throw new Error("No Timestamp Data");
-                    
-                    const timestamps = result.timestamp; 
-                    const quotes = result.indicators.quote[0];
-                    
-                    let formatted = []; let lastT = 0;
-                    for (let i = 0; i < timestamps.length; i++) {
-                        if (quotes.close[i] !== null && quotes.open[i] !== null && timestamps[i] > lastT) {
-                            formatted.push({
-                                time: timestamps[i], open: quotes.open[i], high: quotes.high[i], low: quotes.low[i], close: quotes.close[i]
-                            });
-                            lastT = timestamps[i];
-                        }
-                    }
-                    if (formatted.length > 0) return formatted;
-                } catch (err) { 
-                    lastError = err.message;
-                    continue; // ถ้าท่อแรกพลาด จะสลับไปลองท่อสองทันที
+            const data = JSON.parse(textData);
+            
+            // 🛑 ถ้า Google ฟ้องว่า Yahoo บล็อกทุกช่องทาง
+            if (data.error) {
+                throw new Error("ERROR: " + data.error);
+            }
+            
+            if (!data.chart || !data.chart.result || !data.chart.result[0]) throw new Error("Invalid Yahoo Data");
+            
+            const result = data.chart.result[0];
+            const timestamps = result.timestamp; 
+            const quotes = result.indicators.quote[0];
+            
+            let formatted = []; let lastT = 0;
+            for (let i = 0; i < timestamps.length; i++) {
+                if (quotes.close[i] !== null && quotes.open[i] !== null && timestamps[i] > lastT) {
+                    formatted.push({
+                        time: timestamps[i], open: quotes.open[i], high: quotes.high[i], low: quotes.low[i], close: quotes.close[i]
+                    });
+                    lastT = timestamps[i];
                 }
             }
-            throw new Error("All Forex APIs Failed: " + lastError);
+            return formatted;
         }
 
         async function fetchFallbackPAXG() {
@@ -430,7 +419,12 @@
                 try {
                     formattedData = await fetchRealForexGold();
                 } catch(e) {
-                    console.warn("FOREX UNAVAILABLE: Fallback to PAXG triggered due to", e.message);
+                    // ปริ้นสาเหตุที่แท้จริงออกทาง Console (F12) และบอกผู้ใช้บนหน้าจอ
+                    console.error("FOREX ERROR DETECTED:", e.message);
+                    
+                    document.getElementById('exec-subtext').innerText = "⚠️ " + e.message;
+                    document.getElementById('exec-subtext').style.color = "var(--sell-color)";
+                    
                     formattedData = await fetchFallbackPAXG();
                     isFallback = true;
                 }
@@ -521,10 +515,11 @@
                     document.getElementById('exec-action').innerText = action; document.getElementById('exec-action').style.color = actionColor;
                     const iconEl = document.getElementById('exec-icon'); iconEl.innerText = iconText; iconEl.style.color = actionColor; iconEl.style.borderColor = actionColor;
                     iconEl.style.background = action === "BUY" ? "rgba(0, 255, 102, 0.1)" : "rgba(255, 51, 102, 0.1)";
-                    document.getElementById('exec-subtext').innerText = subText; document.getElementById('exec-price').innerText = currentPrice.toFixed(2); document.getElementById('exec-time').innerText = thaiTime;
+                    document.getElementById('exec-subtext').innerText = subText; document.getElementById('exec-subtext').style.color = "var(--text-dim)"; document.getElementById('exec-price').innerText = currentPrice.toFixed(2); document.getElementById('exec-time').innerText = thaiTime;
                     recordSignal(action, currentPrice);
-                } else if (action === "WAIT") {
+                } else if (action === "WAIT" && !isFallback) {
                     document.getElementById('exec-subtext').innerText = subText;
+                    document.getElementById('exec-subtext').style.color = "var(--text-dim)";
                 }
 
             } catch (error) { 
@@ -538,9 +533,10 @@
         window.addEventListener('resize', () => { chart.resize(document.getElementById('tvchart').clientWidth, document.getElementById('tvchart').clientHeight); });
         
         processMarketData(); 
-        setInterval(processMarketData, 10000); 
+        setInterval(processMarketData, 15000); 
     </script>
 
+    <!-- SECURITY SCRIPT -->
     <script>
         document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
         document.onkeydown = function(e) {
