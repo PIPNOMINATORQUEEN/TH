@@ -205,7 +205,11 @@
     </div>
 
     <script>
-        // --- 1. ฟังก์ชันเช็คเวลา Kill Zone ---
+        // =========================================================================================
+        // ⭐ นำ URL ของ GOOGLE APPS SCRIPT (ที่กด Deploy ใหม่) มาวางในบรรทัดด้านล่างนี้
+        // =========================================================================================
+        const GAS_PRIVATE_API_URL = "https://script.google.com/macros/s/AKfycbxC8TNm4TvAHloAEU-jY502ShFoeUGnmauIj-ux2vergmpvr73894V76yLSzf010-SFcw/exec"; 
+
         function checkKillZone(timestampMs) {
             const d = new Date(timestampMs);
             const h = d.getHours();
@@ -218,7 +222,6 @@
             return false; 
         }
 
-        // --- 2. อัลกอริทึมค้นหา FVG (Fair Value Gap) ---
         function findLatestFVG(data) {
             for (let i = data.length - 2; i >= 2; i--) {
                 let c1 = data[i-2]; let c2 = data[i-1]; let c3 = data[i];
@@ -246,36 +249,22 @@
             return null; 
         }
 
-        // --- 3. อัลกอริทึมตรวจจับ RSI Divergence ---
         function checkDivergence(closes, rsis, lookback = 30) {
             if (closes.length < lookback * 2) return "NONE";
             
-            let recentCloses = closes.slice(-lookback);
-            let recentRsis = rsis.slice(-lookback);
-            let recentMaxPrice = Math.max(...recentCloses);
-            let recentMaxIdx = recentCloses.lastIndexOf(recentMaxPrice);
-            let recentMaxRsi = recentRsis[recentMaxIdx];
+            let recentCloses = closes.slice(-lookback); let recentRsis = rsis.slice(-lookback);
+            let recentMaxPrice = Math.max(...recentCloses); let recentMaxIdx = recentCloses.lastIndexOf(recentMaxPrice); let recentMaxRsi = recentRsis[recentMaxIdx];
+            let recentMinPrice = Math.min(...recentCloses); let recentMinIdx = recentCloses.lastIndexOf(recentMinPrice); let recentMinRsi = recentRsis[recentMinIdx];
 
-            let recentMinPrice = Math.min(...recentCloses);
-            let recentMinIdx = recentCloses.lastIndexOf(recentMinPrice);
-            let recentMinRsi = recentRsis[recentMinIdx];
-
-            let prevCloses = closes.slice(-lookback * 2, -lookback);
-            let prevRsis = rsis.slice(-lookback * 2, -lookback);
-            let prevMaxPrice = Math.max(...prevCloses);
-            let prevMaxIdx = prevCloses.lastIndexOf(prevMaxPrice);
-            let prevMaxRsi = prevRsis[prevMaxIdx];
-
-            let prevMinPrice = Math.min(...prevCloses);
-            let prevMinIdx = prevCloses.lastIndexOf(prevMinPrice);
-            let prevMinRsi = prevRsis[prevMinIdx];
+            let prevCloses = closes.slice(-lookback * 2, -lookback); let prevRsis = rsis.slice(-lookback * 2, -lookback);
+            let prevMaxPrice = Math.max(...prevCloses); let prevMaxIdx = prevCloses.lastIndexOf(prevMaxPrice); let prevMaxRsi = prevRsis[prevMaxIdx];
+            let prevMinPrice = Math.min(...prevCloses); let prevMinIdx = prevCloses.lastIndexOf(prevMinPrice); let prevMinRsi = prevRsis[prevMinIdx];
 
             if (recentMaxPrice > prevMaxPrice && recentMaxRsi < prevMaxRsi && recentMaxRsi > 50) return "BEARISH DIV";
             if (recentMinPrice < prevMinPrice && recentMinRsi > prevMinRsi && recentMinRsi < 50) return "BULLISH DIV";
             return "NONE";
         }
 
-        // --- ระบบสถิติ และคำนวณ Indicator ---
         function calculateRSI(closes, period = 14) {
             if (closes.length <= period) return Array(closes.length).fill(50);
             let rsi = new Array(closes.length).fill(0);
@@ -288,8 +277,7 @@
             rsi[period] = avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss));
             for (let i = period + 1; i < closes.length; i++) {
                 let change = closes[i] - closes[i - 1];
-                let gain = change > 0 ? change : 0;
-                let loss = change < 0 ? -change : 0;
+                let gain = change > 0 ? change : 0; let loss = change < 0 ? -change : 0;
                 avgGain = ((avgGain * (period - 1)) + gain) / period;
                 avgLoss = ((avgLoss * (period - 1)) + loss) / period;
                 rsi[i] = avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss));
@@ -371,38 +359,62 @@
 
         let fvgTopLine = null; let fvgBotLine = null; let fvgMidLine = null; let lastLockedSignal = "WAIT";
 
-       // =========================================================================================
-        // ⭐ นำ URL ของ GOOGLE APPS SCRIPT ที่คุณสร้างขึ้นมาวางในบรรทัดด้านล่างนี้
-        // =========================================================================================
-        const GAS_PRIVATE_API_URL = "https://script.google.com/macros/s/AKfycbxC8TNm4TvAHloAEU-jY502ShFoeUGnmauIj-ux2vergmpvr73894V76yLSzf010-SFcw/exec"; 
-        
+        // --- ระบบดึงข้อมูลแบบหลายชั้น ---
         async function fetchRealForexGold() {
-            try {
-                // ข้ามการใช้งาน Proxy สาธารณะทั้งหมด แล้วยิงตรงไปที่ Google Server ของเรา
-                const res = await fetch(GAS_PRIVATE_API_URL, { redirect: "follow" });
-                if (!res.ok) throw new Error("GAS API Failed");
-                
-                const data = await res.json();
-                if (!data.chart || !data.chart.result || !data.chart.result[0]) throw new Error("Invalid Format");
-                
-                const result = data.chart.result[0];
-                const timestamps = result.timestamp; 
-                const quotes = result.indicators.quote[0];
-                
-                let formatted = []; let lastT = 0;
-                for (let i = 0; i < timestamps.length; i++) {
-                    if (quotes.close[i] !== null && quotes.open[i] !== null && timestamps[i] > lastT) {
-                        formatted.push({
-                            time: timestamps[i], open: quotes.open[i], high: quotes.high[i], low: quotes.low[i], close: quotes.close[i]
-                        });
-                        lastT = timestamps[i];
+            const yfUrl = "https://query1.finance.yahoo.com/v8/finance/chart/XAUUSD=X?range=3d&interval=1m&_=" + Date.now();
+            
+            // 1. ลองดึงผ่าน Private Google Script ของคุณก่อน
+            const endpoints = [
+                { url: GAS_PRIVATE_API_URL, type: 'gas' },
+                { url: `https://api.allorigins.win/raw?url=${encodeURIComponent(yfUrl)}`, type: 'raw' },
+                { url: `https://corsproxy.io/?${encodeURIComponent(yfUrl)}`, type: 'raw' }
+            ];
+
+            let lastError = "";
+
+            for (let ep of endpoints) {
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 6000); 
+                    
+                    const res = await fetch(ep.url, { signal: controller.signal, redirect: "follow" });
+                    clearTimeout(timeoutId);
+                    
+                    if (!res.ok) throw new Error("HTTP Error " + res.status);
+                    
+                    // อ่านเป็นข้อความดิบก่อนเพื่อเช็คว่า Yahoo ส่งหน้าจอ Error กลับมาให้ Google หรือเปล่า
+                    const textData = await res.text();
+                    
+                    if (textData.includes("Forbidden") || textData.includes("<html") || textData.includes("Will be right back")) {
+                        throw new Error("Blocked by Yahoo");
                     }
+
+                    const data = JSON.parse(textData);
+                    
+                    if (!data.chart || !data.chart.result || !data.chart.result[0]) throw new Error("Invalid JSON Format");
+                    
+                    const result = data.chart.result[0];
+                    if (!result.timestamp) throw new Error("No Timestamp Data");
+                    
+                    const timestamps = result.timestamp; 
+                    const quotes = result.indicators.quote[0];
+                    
+                    let formatted = []; let lastT = 0;
+                    for (let i = 0; i < timestamps.length; i++) {
+                        if (quotes.close[i] !== null && quotes.open[i] !== null && timestamps[i] > lastT) {
+                            formatted.push({
+                                time: timestamps[i], open: quotes.open[i], high: quotes.high[i], low: quotes.low[i], close: quotes.close[i]
+                            });
+                            lastT = timestamps[i];
+                        }
+                    }
+                    if (formatted.length > 0) return formatted;
+                } catch (err) { 
+                    lastError = err.message;
+                    continue; // ถ้าท่อแรกพลาด จะสลับไปลองท่อสองทันที
                 }
-                return formatted;
-            } catch (err) {
-                console.error("Private API Error:", err);
-                throw err;
             }
+            throw new Error("All Forex APIs Failed: " + lastError);
         }
 
         async function fetchFallbackPAXG() {
@@ -416,13 +428,9 @@
                 let formattedData; let isFallback = false;
 
                 try {
-                    // ถ้านำ URL จาก Google Apps Script มาใส่แล้ว ระบบจะใช้ Live Forex ตลอดกาล
-                    if(GAS_PRIVATE_API_URL === "วาง_URL_จาก_GOOGLE_SCRIPT_ตรงนี้") {
-                         throw new Error("Missing Google Script URL");
-                    }
                     formattedData = await fetchRealForexGold();
                 } catch(e) {
-                    console.warn("FOREX UNAVAILABLE: Fallback to PAXG");
+                    console.warn("FOREX UNAVAILABLE: Fallback to PAXG triggered due to", e.message);
                     formattedData = await fetchFallbackPAXG();
                     isFallback = true;
                 }
@@ -530,7 +538,7 @@
         window.addEventListener('resize', () => { chart.resize(document.getElementById('tvchart').clientWidth, document.getElementById('tvchart').clientHeight); });
         
         processMarketData(); 
-        setInterval(processMarketData, 10000); // เมื่อใช้ Private API ดึงทุก 10 วิได้สบายๆ ครับ!
+        setInterval(processMarketData, 10000); 
     </script>
 
     <script>
