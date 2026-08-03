@@ -371,15 +371,15 @@
 
         let fvgTopLine = null; let fvgBotLine = null; let fvgMidLine = null; let lastLockedSignal = "WAIT";
 
+       // =========================================================================================
+        // ⭐ นำ URL ของ GOOGLE APPS SCRIPT ที่คุณสร้างขึ้นมาวางในบรรทัดด้านล่างนี้
         // =========================================================================================
-        // ⭐ นำ URL ของ GOOGLE APPS SCRIPT ที่คุณสร้างขึ้นมาวางในบรรทัดด้านล่างนี้ (ในเครื่องหมายคำพูด)
-        // =========================================================================================
-        const GAS_PRIVATE_API_URL = "วาง_URL_จาก_GOOGLE_SCRIPT_ตรงนี้"; 
+        const GAS_PRIVATE_API_URL = "https://script.google.com/macros/s/AKfycbyQXHAYcX7NDznsUdBwp5_tqu-H2j-1PVsXWiVOa0PSSPwvuziQI8wZSuz93yDmxoa5DA/exec"; 
         
         async function fetchRealForexGold() {
             try {
                 // ข้ามการใช้งาน Proxy สาธารณะทั้งหมด แล้วยิงตรงไปที่ Google Server ของเรา
-                const res = await fetch(GAS_PRIVATE_API_URL);
+                const res = await fetch(GAS_PRIVATE_API_URL, { redirect: "follow" });
                 if (!res.ok) throw new Error("GAS API Failed");
                 
                 const data = await res.json();
@@ -417,7 +417,7 @@
 
                 try {
                     // ถ้านำ URL จาก Google Apps Script มาใส่แล้ว ระบบจะใช้ Live Forex ตลอดกาล
-                    if(GAS_PRIVATE_API_URL === "https://script.google.com/macros/s/AKfycbyQXHAYcX7NDznsUdBwp5_tqu-H2j-1PVsXWiVOa0PSSPwvuziQI8wZSuz93yDmxoa5DA/exec") {
+                    if(GAS_PRIVATE_API_URL === "วาง_URL_จาก_GOOGLE_SCRIPT_ตรงนี้") {
                          throw new Error("Missing Google Script URL");
                     }
                     formattedData = await fetchRealForexGold();
