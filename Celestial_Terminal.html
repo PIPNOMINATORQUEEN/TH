@@ -387,54 +387,58 @@
         let fvgTopLine = null; let fvgBotLine = null; let fvgMidLine = null;
         let lastLockedSignal = "WAIT";
 
-        // --- ดึงข้อมูล XAUUSD (อัปเกรดระบบ Proxy สุ่มหลบแบน) ---
+        // --- ระบบเจาะเกราะ 8 เส้นทาง (Multi-Node Bypass) ---
         async function fetchRealForexGold() {
-            const yfUrl = "https://query2.finance.yahoo.com/v8/finance/chart/XAUUSD=X?range=3d&interval=1m&_=" + Date.now();
-            
-            // เตรียมท่อ Proxy 3 ตัว และสลับกันใช้งานอัตโนมัติ เพื่อกระจายโหลด (Load Balancing)
-            const proxies = [
-                { url: `https://corsproxy.io/?${encodeURIComponent(yfUrl)}`, type: 'raw' },
-                { url: `https://api.allorigins.win/get?url=${encodeURIComponent(yfUrl)}`, type: 'contents' },
-                { url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(yfUrl)}`, type: 'raw' }
+            // ใช้ 2 เซิร์ฟเวอร์ของ Yahoo เพื่อป้องกันการบล็อกเซิร์ฟเวอร์เดียว
+            const urls = [
+                "https://query1.finance.yahoo.com/v8/finance/chart/XAUUSD=X?range=3d&interval=1m",
+                "https://query2.finance.yahoo.com/v8/finance/chart/XAUUSD=X?range=3d&interval=1m"
             ];
             
-            // สุ่มลำดับ Proxy ให้ดึงไม่ซ้ำกันแต่ละรอบ
-            proxies.sort(() => Math.random() - 0.5);
-            
-            for (let proxy of proxies) {
-                try {
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 8000); 
-                    const res = await fetch(proxy.url, { signal: controller.signal });
-                    clearTimeout(timeoutId);
-                    
-                    if (!res.ok) continue; 
-                    let data;
-                    if (proxy.type === 'contents') {
-                        const wrapper = await res.json(); data = JSON.parse(wrapper.contents);
-                    } else { data = await res.json(); }
-                    
-                    if (!data.chart || !data.chart.result || !data.chart.result[0]) continue;
-                    
-                    const result = data.chart.result[0];
-                    if (!result.timestamp) continue;
-                    
-                    const timestamps = result.timestamp; 
-                    const quotes = result.indicators.quote[0];
-                    
-                    let formatted = []; let lastT = 0;
-                    for (let i = 0; i < timestamps.length; i++) {
-                        if (quotes.close[i] !== null && quotes.open[i] !== null && timestamps[i] > lastT) {
-                            formatted.push({
-                                time: timestamps[i], open: quotes.open[i], high: quotes.high[i], low: quotes.low[i], close: quotes.close[i]
-                            });
-                            lastT = timestamps[i];
+            // ใช้ 4 ท่อ Proxy ที่เสถียรที่สุด สลับกันไป
+            const proxyGenerators = [
+                (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url + '&_=' + Date.now())}`,
+                (url) => `https://corsproxy.io/?${encodeURIComponent(url + '&_=' + Date.now())}`,
+                (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url + '&_=' + Date.now())}`,
+                (url) => `https://thingproxy.freeboard.io/fetch/${url + '&_=' + Date.now()}`
+            ];
+
+            // วนลูปยิงทะลวงทีละเส้นทาง ถ้าเส้นไหนโดน Yahoo บล็อก จะเด้งไปเส้นต่อไปอัตโนมัติในเสี้ยววินาที
+            for (let getProxy of proxyGenerators) {
+                for (let yfUrl of urls) {
+                    try {
+                        const targetUrl = getProxy(yfUrl);
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 4000); // รอเส้นละ 4 วิ ถ้าหน่วงตัดทิ้งทันที
+                        
+                        const res = await fetch(targetUrl, { signal: controller.signal });
+                        clearTimeout(timeoutId);
+                        
+                        if (!res.ok) continue; 
+                        
+                        const data = await res.json();
+                        if (!data.chart || !data.chart.result || !data.chart.result[0]) continue;
+                        
+                        const result = data.chart.result[0];
+                        if (!result.timestamp) continue;
+                        
+                        const timestamps = result.timestamp; 
+                        const quotes = result.indicators.quote[0];
+                        
+                        let formatted = []; let lastT = 0;
+                        for (let i = 0; i < timestamps.length; i++) {
+                            if (quotes.close[i] !== null && quotes.open[i] !== null && timestamps[i] > lastT) {
+                                formatted.push({
+                                    time: timestamps[i], open: quotes.open[i], high: quotes.high[i], low: quotes.low[i], close: quotes.close[i]
+                                });
+                                lastT = timestamps[i];
+                            }
                         }
-                    }
-                    if (formatted.length > 0) return formatted;
-                } catch (err) { continue; }
+                        if (formatted.length > 0) return formatted; // ได้ข้อมูลปุ๊บ คืนค่าให้กราฟทันที
+                    } catch (err) { continue; }
+                }
             }
-            throw new Error("All Forex Proxies Failed");
+            throw new Error("All 8 Forex Proxies Blocked");
         }
 
         async function fetchFallbackPAXG() {
@@ -453,7 +457,7 @@
                 try {
                     formattedData = await fetchRealForexGold();
                 } catch(e) {
-                    console.warn("FOREX DOWN: Fallback to PAXG");
+                    console.warn("FOREX BLOCKED: Auto-Fallback to PAXG triggered");
                     formattedData = await fetchFallbackPAXG();
                     isFallback = true;
                 }
@@ -563,7 +567,7 @@
 
         window.addEventListener('resize', () => { chart.resize(document.getElementById('tvchart').clientWidth, document.getElementById('tvchart').clientHeight); });
         
-        // --- เปลี่ยนรอบการดึงข้อมูลเป็น 30 วินาที เพื่อทะนุถนอมเซิร์ฟเวอร์ Proxy ---
+        // --- ดึงข้อมูลทุก 30 วินาทีเพื่อหลบการโดนแบน IP จากระบบ Proxy สาธารณะ ---
         processMarketData(); 
         setInterval(processMarketData, 30000); 
     </script>
