@@ -205,7 +205,7 @@
     </div>
 
     <script>
-        // --- 1. ฟังก์ชันเช็คเวลา Kill Zone ---
+        // --- ฟังก์ชันเช็คเวลา Kill Zone ---
         function checkKillZone(timestampMs) {
             const d = new Date(timestampMs);
             const h = d.getHours();
@@ -218,7 +218,7 @@
             return false; 
         }
 
-        // --- 2. อัลกอริทึมค้นหา FVG (Fair Value Gap) แบบเรียลไทม์ ---
+        // --- อัลกอริทึมค้นหา FVG (Fair Value Gap) ---
         function findLatestFVG(data) {
             for (let i = data.length - 2; i >= 2; i--) {
                 let c1 = data[i-2]; let c2 = data[i-1]; let c3 = data[i];
@@ -226,7 +226,6 @@
                 if (c1.high < c3.low && c2.close > c2.open) { 
                     let gapTop = c3.low; let gapBottom = c1.high;
                     let mid = (gapTop + gapBottom) / 2; 
-                    
                     let filled = false;
                     for(let j = i+1; j < data.length; j++) {
                         if (data[j].low <= gapBottom) { filled = true; break; }
@@ -237,7 +236,6 @@
                 if (c1.low > c3.high && c2.close < c2.open) { 
                     let gapTop = c1.low; let gapBottom = c3.high;
                     let mid = (gapTop + gapBottom) / 2; 
-                    
                     let filled = false;
                     for(let j = i+1; j < data.length; j++) {
                         if (data[j].high >= gapTop) { filled = true; break; }
@@ -248,7 +246,7 @@
             return null; 
         }
 
-        // --- 3. อัลกอริทึมตรวจจับ RSI Divergence ---
+        // --- อัลกอริทึมตรวจจับ RSI Divergence ---
         function checkDivergence(closes, rsis, lookback = 30) {
             if (closes.length < lookback * 2) return "NONE";
             
@@ -272,14 +270,8 @@
             let prevMinIdx = prevCloses.lastIndexOf(prevMinPrice);
             let prevMinRsi = prevRsis[prevMinIdx];
 
-            // Bearish Divergence: ราคาสูงขึ้น แต่ RSI ต่ำลง (เตือนว่าหมดแรงซื้อ)
-            if (recentMaxPrice > prevMaxPrice && recentMaxRsi < prevMaxRsi && recentMaxRsi > 50) {
-                return "BEARISH DIV";
-            }
-            // Bullish Divergence: ราคาต่ำลง แต่ RSI สูงขึ้น (เตือนว่าหมดแรงขาย)
-            if (recentMinPrice < prevMinPrice && recentMinRsi > prevMinRsi && recentMinRsi < 50) {
-                return "BULLISH DIV";
-            }
+            if (recentMaxPrice > prevMaxPrice && recentMaxRsi < prevMaxRsi && recentMaxRsi > 50) return "BEARISH DIV";
+            if (recentMinPrice < prevMinPrice && recentMinRsi > prevMinRsi && recentMinRsi < 50) return "BULLISH DIV";
             return "NONE";
         }
 
@@ -290,8 +282,7 @@
             let gains = 0, losses = 0;
             for (let i = 1; i <= period; i++) {
                 let change = closes[i] - closes[i - 1];
-                if (change > 0) gains += change;
-                else losses -= change;
+                if (change > 0) gains += change; else losses -= change;
             }
             let avgGain = gains / period; let avgLoss = losses / period;
             rsi[period] = avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss));
@@ -331,7 +322,6 @@
                 let p = periods[i]; let pfx = prefixes[i];
                 let totalCompleted = stats[p].win + stats[p].loss;
                 let winRate = totalCompleted > 0 ? ((stats[p].win / totalCompleted) * 100).toFixed(1) : 0;
-                
                 document.getElementById(`st-${pfx}-sig`).innerText = stats[p].sig;
                 document.getElementById(`st-${pfx}-win`).innerText = stats[p].win;
                 document.getElementById(`st-${pfx}-los`).innerText = stats[p].loss;
@@ -397,18 +387,24 @@
         let fvgTopLine = null; let fvgBotLine = null; let fvgMidLine = null;
         let lastLockedSignal = "WAIT";
 
-        // --- ดึงข้อมูล XAUUSD ---
+        // --- ดึงข้อมูล XAUUSD (อัปเกรดระบบ Proxy สุ่มหลบแบน) ---
         async function fetchRealForexGold() {
-            const yfUrl = "https://query1.finance.yahoo.com/v8/finance/chart/XAUUSD=X?range=3d&interval=1m";
+            const yfUrl = "https://query2.finance.yahoo.com/v8/finance/chart/XAUUSD=X?range=3d&interval=1m&_=" + Date.now();
+            
+            // เตรียมท่อ Proxy 3 ตัว และสลับกันใช้งานอัตโนมัติ เพื่อกระจายโหลด (Load Balancing)
             const proxies = [
+                { url: `https://corsproxy.io/?${encodeURIComponent(yfUrl)}`, type: 'raw' },
                 { url: `https://api.allorigins.win/get?url=${encodeURIComponent(yfUrl)}`, type: 'contents' },
                 { url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(yfUrl)}`, type: 'raw' }
             ];
             
+            // สุ่มลำดับ Proxy ให้ดึงไม่ซ้ำกันแต่ละรอบ
+            proxies.sort(() => Math.random() - 0.5);
+            
             for (let proxy of proxies) {
                 try {
                     const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 6000); 
+                    const timeoutId = setTimeout(() => controller.abort(), 8000); 
                     const res = await fetch(proxy.url, { signal: controller.signal });
                     clearTimeout(timeoutId);
                     
@@ -421,7 +417,10 @@
                     if (!data.chart || !data.chart.result || !data.chart.result[0]) continue;
                     
                     const result = data.chart.result[0];
-                    const timestamps = result.timestamp; const quotes = result.indicators.quote[0];
+                    if (!result.timestamp) continue;
+                    
+                    const timestamps = result.timestamp; 
+                    const quotes = result.indicators.quote[0];
                     
                     let formatted = []; let lastT = 0;
                     for (let i = 0; i < timestamps.length; i++) {
@@ -435,7 +434,7 @@
                     if (formatted.length > 0) return formatted;
                 } catch (err) { continue; }
             }
-            throw new Error("Forex API Failed");
+            throw new Error("All Forex Proxies Failed");
         }
 
         async function fetchFallbackPAXG() {
@@ -469,7 +468,12 @@
                 if (isFallback) {
                     document.getElementById('market-status').innerHTML = '<span style="color:var(--level-gold)">●</span> FALLBACK MODE (PAXG/USDT)';
                     document.getElementById('market-status').style.color = "var(--level-gold)";
+                    document.getElementById('symbol-display').innerText = "GOLD (PAXG/USDT) M1 FALLBACK";
+                    document.getElementById('node-symbol').innerText = "PAXGUSDT / M1";
                 } else {
+                    document.getElementById('symbol-display').innerText = "GOLD (XAU/USD) M1 FOREX";
+                    document.getElementById('node-symbol').innerText = "XAUUSD / M1";
+                    
                     const nowSec = Math.floor(Date.now() / 1000);
                     if (nowSec - lastTimestamp > 7200) {
                         document.getElementById('market-status').innerHTML = '<span style="color:var(--sell-color)">●</span> MARKET CLOSED (WEEKEND)';
@@ -517,7 +521,7 @@
                     document.getElementById('val-fvg-type').style.color = "var(--text-dim)";
                 }
 
-                // --- 4. การตัดสินใจของ AI (ใช้ Kill Zone, FVG 50% และ Divergence Filter) ---
+                // --- การตัดสินใจของ AI ---
                 let action = "WAIT"; let actionColor = "var(--level-gold)"; let iconText = "⏳"; 
                 let currentZone = checkKillZone(Date.now());
                 let subText = currentZone ? "SCANNING FVG 50% ZONE..." : "OUTSIDE KILL ZONE (WAITING)";
@@ -525,7 +529,6 @@
                 if (currentZone && latestFVG) {
                     let distToMid = Math.abs(currentPrice - latestFVG.mid);
                     if (distToMid <= 0.50) { 
-                        // กรองการเข้าเทรดด้วย Divergence: ถ้ามี Bearish Div ห้ามเข้า BUY / ถ้ามี Bullish Div ห้ามเข้า SELL
                         if (latestFVG.type === 'BULLISH' && currentRsi < 45 && divStatus !== "BEARISH DIV") { 
                             action = "BUY"; actionColor = "var(--buy-color)"; iconText = "↑"; subText = "FVG 50% ENTRY + " + currentZone;
                         } else if (latestFVG.type === 'BEARISH' && currentRsi > 55 && divStatus !== "BULLISH DIV") { 
@@ -559,7 +562,10 @@
         }
 
         window.addEventListener('resize', () => { chart.resize(document.getElementById('tvchart').clientWidth, document.getElementById('tvchart').clientHeight); });
-        processMarketData(); setInterval(processMarketData, 15000); 
+        
+        // --- เปลี่ยนรอบการดึงข้อมูลเป็น 30 วินาที เพื่อทะนุถนอมเซิร์ฟเวอร์ Proxy ---
+        processMarketData(); 
+        setInterval(processMarketData, 30000); 
     </script>
 
     <!-- SECURITY SCRIPT -->
