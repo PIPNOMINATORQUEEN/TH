@@ -205,7 +205,7 @@
     </div>
 
     <script>
-        // --- ฟังก์ชันเช็คเวลา Kill Zone ---
+        // --- 1. ฟังก์ชันเช็คเวลา Kill Zone ---
         function checkKillZone(timestampMs) {
             const d = new Date(timestampMs);
             const h = d.getHours();
@@ -218,7 +218,7 @@
             return false; 
         }
 
-        // --- อัลกอริทึมค้นหา FVG (Fair Value Gap) ---
+        // --- 2. อัลกอริทึมค้นหา FVG (Fair Value Gap) ---
         function findLatestFVG(data) {
             for (let i = data.length - 2; i >= 2; i--) {
                 let c1 = data[i-2]; let c2 = data[i-1]; let c3 = data[i];
@@ -246,7 +246,7 @@
             return null; 
         }
 
-        // --- อัลกอริทึมตรวจจับ RSI Divergence ---
+        // --- 3. อัลกอริทึมตรวจจับ RSI Divergence ---
         function checkDivergence(closes, rsis, lookback = 30) {
             if (closes.length < lookback * 2) return "NONE";
             
@@ -297,18 +297,15 @@
             return rsi;
         }
 
-        const TP_DIST = 5.00; 
-        const SL_DIST = 2.50; 
+        const TP_DIST = 5.00; const SL_DIST = 2.50; 
         let stats = JSON.parse(localStorage.getItem('celestial_stats')) || { daily: { sig: 0, win: 0, loss: 0, date: '' }, weekly: { sig: 0, win: 0, loss: 0, date: '' }, monthly: { sig: 0, win: 0, loss: 0, date: '' } };
         let openTrades = JSON.parse(localStorage.getItem('celestial_open_trades')) || [];
 
         function checkDateRollover() {
-            const now = new Date();
-            const todayStr = now.toLocaleDateString('th-TH');
+            const now = new Date(); const todayStr = now.toLocaleDateString('th-TH');
             const dayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1; 
             const monday = new Date(now); monday.setDate(now.getDate() - dayOfWeek);
-            const weekStr = monday.toLocaleDateString('th-TH');
-            const monthStr = now.getMonth() + '-' + now.getFullYear();
+            const weekStr = monday.toLocaleDateString('th-TH'); const monthStr = now.getMonth() + '-' + now.getFullYear();
 
             if (stats.daily.date !== todayStr) { stats.daily = { sig: 0, win: 0, loss: 0, date: todayStr }; }
             if (stats.weekly.date !== weekStr) { stats.weekly = { sig: 0, win: 0, loss: 0, date: weekStr }; }
@@ -316,32 +313,24 @@
         }
 
         function updateUIStats() {
-            const periods = ['daily', 'weekly', 'monthly'];
-            const prefixes = ['d', 'w', 'm'];
+            const periods = ['daily', 'weekly', 'monthly']; const prefixes = ['d', 'w', 'm'];
             for(let i=0; i<3; i++) {
                 let p = periods[i]; let pfx = prefixes[i];
                 let totalCompleted = stats[p].win + stats[p].loss;
                 let winRate = totalCompleted > 0 ? ((stats[p].win / totalCompleted) * 100).toFixed(1) : 0;
-                document.getElementById(`st-${pfx}-sig`).innerText = stats[p].sig;
-                document.getElementById(`st-${pfx}-win`).innerText = stats[p].win;
-                document.getElementById(`st-${pfx}-los`).innerText = stats[p].loss;
-                document.getElementById(`st-${pfx}-rat`).innerText = winRate + '%';
+                document.getElementById(`st-${pfx}-sig`).innerText = stats[p].sig; document.getElementById(`st-${pfx}-win`).innerText = stats[p].win; document.getElementById(`st-${pfx}-los`).innerText = stats[p].loss; document.getElementById(`st-${pfx}-rat`).innerText = winRate + '%';
             }
             document.getElementById('pending-trades-count').innerText = `${openTrades.length} VIRTUAL TRADES RUNNING IN BACKGROUND...`;
-            localStorage.setItem('celestial_stats', JSON.stringify(stats));
-            localStorage.setItem('celestial_open_trades', JSON.stringify(openTrades));
+            localStorage.setItem('celestial_stats', JSON.stringify(stats)); localStorage.setItem('celestial_open_trades', JSON.stringify(openTrades));
         }
 
         function recordSignal(type, price) {
-            checkDateRollover();
-            stats.daily.sig++; stats.weekly.sig++; stats.monthly.sig++;
-            openTrades.push({ type: type, entry: price });
-            updateUIStats();
+            checkDateRollover(); stats.daily.sig++; stats.weekly.sig++; stats.monthly.sig++;
+            openTrades.push({ type: type, entry: price }); updateUIStats();
         }
 
         function checkOpenTrades(currentPrice) {
-            checkDateRollover();
-            let hasUpdate = false;
+            checkDateRollover(); let hasUpdate = false;
             openTrades = openTrades.filter(trade => {
                 let isClosed = false; let isWin = false;
                 if (trade.type === 'BUY') {
@@ -365,9 +354,7 @@
             let pin = prompt("🔒 ADMIN ACCESS REQUIRED\nกรุณากรอกรหัสผ่าน (PIN) เพื่อล้างสถิติ:");
             if (pin === "168168") { 
                 if(confirm("⚠️ คำเตือน: คุณแน่ใจหรือไม่ว่าจะล้างสถิติทั้งหมด?")) {
-                    localStorage.removeItem('celestial_stats');
-                    localStorage.removeItem('celestial_open_trades');
-                    location.reload();
+                    localStorage.removeItem('celestial_stats'); localStorage.removeItem('celestial_open_trades'); location.reload();
                 }
             } else if (pin !== null) { alert("❌ ACCESS DENIED: รหัสผ่านไม่ถูกต้อง!"); }
         }
@@ -380,74 +367,48 @@
             timeScale: { timeVisible: true }
         };
         const chart = LightweightCharts.createChart(document.getElementById('tvchart'), chartProperties);
-        const candleSeries = chart.addCandlestickSeries({
-            upColor: '#00ff66', downColor: '#ff3366', borderVisible: false, wickUpColor: '#00ff66', wickDownColor: '#ff3366'
-        });
+        const candleSeries = chart.addCandlestickSeries({ upColor: '#00ff66', downColor: '#ff3366', borderVisible: false, wickUpColor: '#00ff66', wickDownColor: '#ff3366' });
 
-        let fvgTopLine = null; let fvgBotLine = null; let fvgMidLine = null;
-        let lastLockedSignal = "WAIT";
+        let fvgTopLine = null; let fvgBotLine = null; let fvgMidLine = null; let lastLockedSignal = "WAIT";
 
-        // --- ระบบเจาะเกราะ 8 เส้นทาง (Multi-Node Bypass) ---
+        // =========================================================================================
+        // ⭐ นำ URL ของ GOOGLE APPS SCRIPT ที่คุณสร้างขึ้นมาวางในบรรทัดด้านล่างนี้ (ในเครื่องหมายคำพูด)
+        // =========================================================================================
+        const GAS_PRIVATE_API_URL = "วาง_URL_จาก_GOOGLE_SCRIPT_ตรงนี้"; 
+        
         async function fetchRealForexGold() {
-            // ใช้ 2 เซิร์ฟเวอร์ของ Yahoo เพื่อป้องกันการบล็อกเซิร์ฟเวอร์เดียว
-            const urls = [
-                "https://query1.finance.yahoo.com/v8/finance/chart/XAUUSD=X?range=3d&interval=1m",
-                "https://query2.finance.yahoo.com/v8/finance/chart/XAUUSD=X?range=3d&interval=1m"
-            ];
-            
-            // ใช้ 4 ท่อ Proxy ที่เสถียรที่สุด สลับกันไป
-            const proxyGenerators = [
-                (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url + '&_=' + Date.now())}`,
-                (url) => `https://corsproxy.io/?${encodeURIComponent(url + '&_=' + Date.now())}`,
-                (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url + '&_=' + Date.now())}`,
-                (url) => `https://thingproxy.freeboard.io/fetch/${url + '&_=' + Date.now()}`
-            ];
-
-            // วนลูปยิงทะลวงทีละเส้นทาง ถ้าเส้นไหนโดน Yahoo บล็อก จะเด้งไปเส้นต่อไปอัตโนมัติในเสี้ยววินาที
-            for (let getProxy of proxyGenerators) {
-                for (let yfUrl of urls) {
-                    try {
-                        const targetUrl = getProxy(yfUrl);
-                        const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 4000); // รอเส้นละ 4 วิ ถ้าหน่วงตัดทิ้งทันที
-                        
-                        const res = await fetch(targetUrl, { signal: controller.signal });
-                        clearTimeout(timeoutId);
-                        
-                        if (!res.ok) continue; 
-                        
-                        const data = await res.json();
-                        if (!data.chart || !data.chart.result || !data.chart.result[0]) continue;
-                        
-                        const result = data.chart.result[0];
-                        if (!result.timestamp) continue;
-                        
-                        const timestamps = result.timestamp; 
-                        const quotes = result.indicators.quote[0];
-                        
-                        let formatted = []; let lastT = 0;
-                        for (let i = 0; i < timestamps.length; i++) {
-                            if (quotes.close[i] !== null && quotes.open[i] !== null && timestamps[i] > lastT) {
-                                formatted.push({
-                                    time: timestamps[i], open: quotes.open[i], high: quotes.high[i], low: quotes.low[i], close: quotes.close[i]
-                                });
-                                lastT = timestamps[i];
-                            }
-                        }
-                        if (formatted.length > 0) return formatted; // ได้ข้อมูลปุ๊บ คืนค่าให้กราฟทันที
-                    } catch (err) { continue; }
+            try {
+                // ข้ามการใช้งาน Proxy สาธารณะทั้งหมด แล้วยิงตรงไปที่ Google Server ของเรา
+                const res = await fetch(GAS_PRIVATE_API_URL);
+                if (!res.ok) throw new Error("GAS API Failed");
+                
+                const data = await res.json();
+                if (!data.chart || !data.chart.result || !data.chart.result[0]) throw new Error("Invalid Format");
+                
+                const result = data.chart.result[0];
+                const timestamps = result.timestamp; 
+                const quotes = result.indicators.quote[0];
+                
+                let formatted = []; let lastT = 0;
+                for (let i = 0; i < timestamps.length; i++) {
+                    if (quotes.close[i] !== null && quotes.open[i] !== null && timestamps[i] > lastT) {
+                        formatted.push({
+                            time: timestamps[i], open: quotes.open[i], high: quotes.high[i], low: quotes.low[i], close: quotes.close[i]
+                        });
+                        lastT = timestamps[i];
+                    }
                 }
+                return formatted;
+            } catch (err) {
+                console.error("Private API Error:", err);
+                throw err;
             }
-            throw new Error("All 8 Forex Proxies Blocked");
         }
 
         async function fetchFallbackPAXG() {
             const res = await fetch(`https://data-api.binance.vision/api/v3/klines?symbol=PAXGUSDT&interval=1m&limit=360`);
             const data = await res.json();
-            return data.map(d => ({
-                time: parseInt(d[0]) / 1000,
-                open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4])
-            }));
+            return data.map(d => ({ time: parseInt(d[0]) / 1000, open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4]) }));
         }
 
         async function processMarketData() {
@@ -455,9 +416,13 @@
                 let formattedData; let isFallback = false;
 
                 try {
+                    // ถ้านำ URL จาก Google Apps Script มาใส่แล้ว ระบบจะใช้ Live Forex ตลอดกาล
+                    if(GAS_PRIVATE_API_URL === "https://script.google.com/macros/s/AKfycbyQXHAYcX7NDznsUdBwp5_tqu-H2j-1PVsXWiVOa0PSSPwvuziQI8wZSuz93yDmxoa5DA/exec") {
+                         throw new Error("Missing Google Script URL");
+                    }
                     formattedData = await fetchRealForexGold();
                 } catch(e) {
-                    console.warn("FOREX BLOCKED: Auto-Fallback to PAXG triggered");
+                    console.warn("FOREX UNAVAILABLE: Fallback to PAXG");
                     formattedData = await fetchFallbackPAXG();
                     isFallback = true;
                 }
@@ -498,14 +463,12 @@
                 document.getElementById('val-rsi').innerText = currentRsi.toFixed(2);
                 document.getElementById('val-rsi').className = "ai-card-value " + (currentRsi > 65 ? "val-sell" : currentRsi < 35 ? "val-buy" : "val-neutral");
 
-                // --- อัปเดตสถานะ RSI Divergence ---
                 let divStatus = checkDivergence(closes, rsiValues);
                 document.getElementById('val-div').innerText = divStatus;
                 if(divStatus === "BULLISH DIV") document.getElementById('val-div').style.color = "var(--buy-color)";
                 else if(divStatus === "BEARISH DIV") document.getElementById('val-div').style.color = "var(--sell-color)";
                 else document.getElementById('val-div').style.color = "var(--text-dim)";
 
-                // --- อัปเดตกรอบ FVG บนกราฟ ---
                 let latestFVG = findLatestFVG(formattedData);
                 if(fvgTopLine) candleSeries.removePriceLine(fvgTopLine);
                 if(fvgBotLine) candleSeries.removePriceLine(fvgBotLine);
@@ -525,7 +488,6 @@
                     document.getElementById('val-fvg-type').style.color = "var(--text-dim)";
                 }
 
-                // --- การตัดสินใจของ AI ---
                 let action = "WAIT"; let actionColor = "var(--level-gold)"; let iconText = "⏳"; 
                 let currentZone = checkKillZone(Date.now());
                 let subText = currentZone ? "SCANNING FVG 50% ZONE..." : "OUTSIDE KILL ZONE (WAITING)";
@@ -567,12 +529,10 @@
 
         window.addEventListener('resize', () => { chart.resize(document.getElementById('tvchart').clientWidth, document.getElementById('tvchart').clientHeight); });
         
-        // --- ดึงข้อมูลทุก 30 วินาทีเพื่อหลบการโดนแบน IP จากระบบ Proxy สาธารณะ ---
         processMarketData(); 
-        setInterval(processMarketData, 30000); 
+        setInterval(processMarketData, 10000); // เมื่อใช้ Private API ดึงทุก 10 วิได้สบายๆ ครับ!
     </script>
 
-    <!-- SECURITY SCRIPT -->
     <script>
         document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
         document.onkeydown = function(e) {
